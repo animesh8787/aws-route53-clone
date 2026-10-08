@@ -17,5 +17,9 @@ services:
         value: "true"
       - key: SEED_ON_START
         value: "true"
+      - key: DATABASE_URL # Turso: sqlite+libsql://<db-name>-<org>.turso.io?secure=true  (leave unset for ephemeral SQLite)
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: CORS_ORIGINS
         sync: false # set to the Vercel URL, e.g. https://route53-clone.vercel.app

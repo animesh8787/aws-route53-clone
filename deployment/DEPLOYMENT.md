@@ -21,7 +21,7 @@ SQLite needs a writable disk that outlives the process.
 
 - **Render free:** no persistent disk. The database is rebuilt and re-seeded on every restart. Acceptable for a demo; documented in the README as a known limitation.
 - **Render paid / Fly.io volume:** mount a disk at `/data` and keep `DATABASE_URL=sqlite:////data/route53.db` (the Docker default). Both require a payment method.
-- **libSQL / Turso (free tier, SQLite-compatible):** would give hosted durability with a `DATABASE_URL` pointing at the Turso database via the `sqlalchemy-libsql` driver. Not implemented or tested in this repository.
+- **libSQL / Turso (free, SQLite-compatible) - recommended for the hosted demo:** set `DATABASE_URL=sqlite+libsql://<name>-<org>.turso.io?secure=true` and `TURSO_AUTH_TOKEN`. The data lives in Turso, so it survives Render restarts. The `sqlalchemy-libsql` driver is installed automatically on Linux (it has no Windows wheel, so use plain SQLite for Windows development). The full backend test suite (68 tests) passes against this driver in local-file mode; a connection to a real remote Turso database has not been tested yet.
 - **Local / Docker:** `docker compose up --build` keeps data in the `db-data` volume.
 
 ## Schema migrations

@@ -12,9 +12,15 @@ class Base(DeclarativeBase):
 
 
 def make_engine(url: str) -> Engine:
-    is_sqlite = url.startswith("sqlite")
-    engine = create_engine(url, connect_args={"check_same_thread": False} if is_sqlite else {})
+    is_libsql = url.startswith("sqlite+libsql")  # Turso / libSQL: SQLite-compatible hosted database
+    is_sqlite = url.startswith("sqlite") and not is_libsql
+    connect_args: dict = {}
     if is_sqlite:
+        connect_args["check_same_thread"] = False
+    elif is_libsql and (token := get_settings().turso_auth_token):
+        connect_args["auth_token"] = token
+    engine = create_engine(url, connect_args=connect_args)
+    if is_sqlite or is_libsql:
 
         @event.listens_for(engine, "connect")
         def _sqlite_pragmas(dbapi_conn, _record):

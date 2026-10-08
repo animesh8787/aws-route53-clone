@@ -217,10 +217,10 @@ cd frontend && PW_CHANNEL=chrome npm run test:e2e   # Playwright; omit PW_CHANNE
 - **E2E (Playwright, production build on separate ports and a throw-away DB):** login → zone filtering/pagination → create zone (with validation error) → verify SOA/NS → create A, CNAME, MX, TXT → server-side validation error → edit → search and filter records → delete with confirmation → logout → redirect to login → login → data persisted → delete zone; BIND import preview, export download and test record; unauthenticated redirect and Coming Soon page.
 
 ## Deployment
-Target: **Vercel** (frontend) + **Render free web service** (API), both free. Step-by-step instructions and the one hosting caveat are in [`deployment/DEPLOYMENT.md`](deployment/DEPLOYMENT.md); the account-bound steps are listed in [`HUMAN_ACTIONS_REQUIRED.md`](HUMAN_ACTIONS_REQUIRED.md). The browser only talks to the Vercel origin (`/api/*` is rewritten to the API), so the session cookie stays first-party.
+Target: **Vercel** (frontend) + **Render free web service** (API) + **Turso** (hosted SQLite for persistence), all free. Step-by-step instructions and the one hosting caveat are in [`deployment/DEPLOYMENT.md`](deployment/DEPLOYMENT.md); the account-bound steps are listed in [`HUMAN_ACTIONS_REQUIRED.md`](HUMAN_ACTIONS_REQUIRED.md). The browser only talks to the Vercel origin (`/api/*` is rewritten to the API), so the session cookie stays first-party.
 
 ## Known limitations
-- **Hosted data is not durable on Render's free plan** (no persistent disk): the SQLite file is recreated and re-seeded when the API restarts or wakes from sleep. Locally and with Docker, data persists. Paid disks or a volume fix this; see the deployment guide.
+- **Hosted durability depends on Turso.** Render's free plan has no persistent disk, so without a Turso database the SQLite file is recreated and re-seeded on every restart. With Turso (free, SQLite-compatible; see the deployment guide) data persists. The backend test suite passes on the libSQL driver, but remote Turso itself has not been exercised yet. Locally and with Docker, data persists on a volume.
 - Free Render services sleep when idle; the first request can take up to a minute.
 - Mocked on purpose: authentication (one demo user), IAM/accounts/billing, VPCs, health checks (status is a toggle, nothing is probed), AWS alias targets (simulated addresses). This is not an authoritative DNS server.
 - Out of scope (Coming Soon pages): traffic policies, health-check management, Resolver, profiles, registered domains, DNS Firewall, DNSSEC and tags.
