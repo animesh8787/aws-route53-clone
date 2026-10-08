@@ -6,17 +6,17 @@ import Input from "@cloudscape-design/components/input";
 import RadioGroup from "@cloudscape-design/components/radio-group";
 import Select from "@cloudscape-design/components/select";
 import SpaceBetween from "@cloudscape-design/components/space-between";
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import { useHealthChecks } from "@/features/dns/hooks";
 import { AWS_REGIONS, CONTINENTS, COUNTRIES, ROUTING_POLICIES, type RecordFormValues } from "@/lib/record-config";
 
 /** Fields that appear only for the chosen routing policy (weight, region, failover role, location...). */
 export function RoutingFields() {
-  const { control, watch, formState } = useFormContext<RecordFormValues>();
-  const policy = watch("routingPolicy");
-  const geoKind = watch("geoKind");
-  const country = watch("geoCountry");
+  const { control, formState } = useFormContext<RecordFormValues>();
+  const policy = useWatch({ control, name: "routingPolicy" });
+  const geoKind = useWatch({ control, name: "geoKind" });
+  const country = useWatch({ control, name: "geoCountry" });
   const health = useHealthChecks();
   const errors = formState.errors;
 

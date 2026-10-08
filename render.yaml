@@ -1,0 +1,21 @@
+# Render Blueprint for the API (free plan). The frontend is deployed separately on Vercel.
+# NOTE: Render's free plan has no persistent disk, so the SQLite file is recreated and
+# re-seeded whenever the service restarts. See deployment/DEPLOYMENT.md for durable options.
+services:
+  - type: web
+    name: route53-clone-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: SEED_ON_START
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false # set to the Vercel URL, e.g. https://route53-clone.vercel.app

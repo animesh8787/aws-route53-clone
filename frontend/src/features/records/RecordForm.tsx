@@ -12,7 +12,7 @@ import Select from "@cloudscape-design/components/select";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import Toggle from "@cloudscape-design/components/toggle";
 import { useMemo, useState } from "react";
-import { Controller, FormProvider, useForm, type Resolver } from "react-hook-form";
+import { Controller, FormProvider, useForm, useWatch, type Resolver } from "react-hook-form";
 
 import { RoutingFields } from "@/features/records/RoutingFields";
 import { ValueFields } from "@/features/records/ValueFields";
@@ -66,14 +66,14 @@ export function RecordForm({ zone, record, submitLabel, title, description, onSu
     defaultValues: record ? recordToForm(record, zone.name) : emptyFormValues(),
     mode: "onTouched",
   });
-  const { control, handleSubmit, watch, setValue, setError, formState } = form;
+  const { control, handleSubmit, setValue, setError, formState } = form;
   const [valuesError, setValuesError] = useState<string | undefined>();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const type = watch("type");
-  const aliasEnabled = watch("aliasEnabled");
-  const aliasTargetType = watch("aliasTargetType");
+  const type = useWatch({ control, name: "type" });
+  const aliasEnabled = useWatch({ control, name: "aliasEnabled" });
+  const aliasTargetType = useWatch({ control, name: "aliasTargetType" });
   const typeConfig = RECORD_TYPE_MAP[type];
   const editing = !!record;
   const isSystem = record?.is_system ?? false;

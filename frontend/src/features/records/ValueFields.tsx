@@ -7,7 +7,7 @@ import Input from "@cloudscape-design/components/input";
 import Select from "@cloudscape-design/components/select";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import Textarea from "@cloudscape-design/components/textarea";
-import { Controller, useFieldArray, useFormContext, type FieldErrors } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext, useWatch, type FieldErrors } from "react-hook-form";
 
 import { RECORD_TYPE_MAP, type RecordFormValues } from "@/lib/record-config";
 import { CAA_TAGS } from "@/lib/dns-validation";
@@ -69,7 +69,7 @@ function StructuredRows({ name, serverError }: { name: RowKey; serverError?: str
     <FormField label="Values" description={RECORD_TYPE_MAP[name === "mxRows" ? "MX" : name === "srvRows" ? "SRV" : "CAA"].help} errorText={serverError}>
       <SpaceBetween size="s">
         {fields.map((row, index) => (
-          <Grid key={row.id} gridDefinition={[...widths, { colspan: 2 }]} disableGutters={false}>
+          <Grid key={row.id} gridDefinition={[...widths, { colspan: 1 }]} disableGutters={false}>
             {spec.columns.map((col) => (
               <Controller
                 key={col.key}
@@ -103,9 +103,13 @@ function StructuredRows({ name, serverError }: { name: RowKey; serverError?: str
               />
             ))}
             <div style={{ paddingTop: index === 0 ? 28 : 0 }}>
-              <Button disabled={fields.length === 1} onClick={() => remove(index)} ariaLabel={`Remove ${spec.noun} ${index + 1}`}>
-                Remove
-              </Button>
+              <Button
+                variant="icon"
+                iconName="close"
+                disabled={fields.length === 1}
+                onClick={() => remove(index)}
+                ariaLabel={`Remove ${spec.noun} ${index + 1}`}
+              />
             </div>
           </Grid>
         ))}
@@ -121,8 +125,8 @@ function StructuredRows({ name, serverError }: { name: RowKey; serverError?: str
 
 /** The value editor changes with the record type: free lines, a single value, or structured rows. */
 export function ValueFields({ serverError }: { serverError?: string }) {
-  const { control, watch, formState } = useFormContext<RecordFormValues>();
-  const type = watch("type");
+  const { control, formState } = useFormContext<RecordFormValues>();
+  const type = useWatch({ control, name: "type" });
   const config = RECORD_TYPE_MAP[type];
   if (!config) return null;
   const rows = MODE_TO_ROWS[config.mode];

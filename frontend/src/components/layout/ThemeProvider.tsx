@@ -22,12 +22,10 @@ function readStoredMode(): ThemeMode {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>("light");
+  // Only the client-side console reads the mode, so a lazy read cannot cause a hydration mismatch.
+  const [mode, setMode] = useState<ThemeMode>(() => (typeof window === "undefined" ? "light" : readStoredMode()));
 
   useEffect(() => {
-    // Hydrate from localStorage once on the client (the initial render must match the server).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMode(readStoredMode());
     applyDensity(Density.Comfortable);
   }, []);
 

@@ -13,7 +13,7 @@ import Select from "@cloudscape-design/components/select";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import Textarea from "@cloudscape-design/components/textarea";
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { usePageChrome } from "@/components/layout/ChromeContext";
@@ -55,9 +55,9 @@ export default function CreateHostedZonePage() {
     defaultValues: { name: "", comment: "", type: "public", region: "us-east-1", vpcId: "" },
     mode: "onTouched",
   });
-  const { control, handleSubmit, watch, setError, setValue, formState } = form;
-  const type = watch("type");
-  const region = watch("region");
+  const { control, handleSubmit, setError, setValue, formState } = form;
+  const type = useWatch({ control, name: "type" });
+  const region = useWatch({ control, name: "region" });
   const vpcs = useMockVpcs(region);
 
   const onSubmit = handleSubmit((values) => {

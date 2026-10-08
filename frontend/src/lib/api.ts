@@ -39,6 +39,8 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
   }
   if (response.status === 401 && !path.startsWith("/auth/login") && typeof window !== "undefined") {
     if (window.location.pathname !== "/login") {
+      // Hard navigation on purpose: it also drops all client caches of the expired session.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
     }
   }

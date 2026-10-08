@@ -48,7 +48,8 @@ def seed_health_checks(db: Session) -> None:
         ("hc-1b2c3d4e5f6a7b8c9", "web-secondary", "203.0.113.20:443", "HEALTHY"),
         ("hc-2c3d4e5f6a7b8c9d0", "api-eu", "api-eu.example.com:443", "UNHEALTHY"),
     ]:
-        db.add(HealthCheck(health_check_id=hc_id, name=name, target=target, status=status))
+        if db.scalar(select(HealthCheck).where(HealthCheck.health_check_id == hc_id)) is None:
+            db.add(HealthCheck(health_check_id=hc_id, name=name, target=target, status=status))
     db.commit()
 
 
@@ -75,7 +76,10 @@ def _seed_example(db: Session, zone: HostedZone) -> None:
     _add(db, zone, "latency", "A", ["203.0.113.2"], routing_policy="latency", set_identifier="eu-west", region="eu-west-1")
     _add(db, zone, "latency", "A", ["203.0.113.3"], routing_policy="latency", set_identifier="ap-south", region="ap-southeast-1")
     # failover (health-checked)
-    _add(db, zone, "failover", "A", ["203.0.113.10"], routing_policy="failover", set_identifier="primary", failover="PRIMARY", health_check_id="hc-0a1b2c3d4e5f6a7b8")
+    _add(
+        db, zone, "failover", "A", ["203.0.113.10"],
+        routing_policy="failover", set_identifier="primary", failover="PRIMARY", health_check_id="hc-0a1b2c3d4e5f6a7b8",
+    )  # fmt: skip
     _add(db, zone, "failover", "A", ["203.0.113.99"], routing_policy="failover", set_identifier="secondary", failover="SECONDARY")
     # geolocation
     _add(db, zone, "geo", "A", ["203.0.113.50"], routing_policy="geolocation", set_identifier="default", geo_country="*")

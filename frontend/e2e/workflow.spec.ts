@@ -173,3 +173,67 @@ test("unauthenticated users are redirected and coming-soon pages render", async 
   await page.goto("/traffic-policies");
   await expect(page.getByText("Traffic policies is coming soon")).toBeVisible();
 });
+
+test("every record type, alias and weighted routing can be created through the editor", async ({ page }) => {
+  const zone = "types-test.com";
+  await login(page);
+  await page.goto("/hosted-zones/create");
+  await page.getByLabel("Domain name").fill(zone);
+  await page.getByRole("button", { name: "Create hosted zone" }).last().click();
+  await expect(page.getByText(`Hosted zone ${zone} was successfully created.`)).toBeVisible();
+  await expect(page).toHaveURL(/\/hosted-zones\/Z[A-Z0-9]+$/);
+  const zoneUrl = page.url();
+
+  const record = async (fill: () => Promise<void>) => {
+    await page.goto(`${zoneUrl}/records/create`);
+    await expect(page.getByRole("heading", { name: "Create record", exact: true })).toBeVisible();
+    await fill();
+    await page.getByRole("button", { name: "Create record" }).last().click();
+    await expect(page.getByText(/was created successfully/).first()).toBeVisible();
+  };
+  const type = (t: string) => chooseOption(page, "Record type", new RegExp(`^${t}`));
+  const name = (n: string) => page.getByLabel("Record name").fill(n);
+  const lines = (v: string) => page.getByLabel(/^Value/).fill(v);
+
+  await record(async () => { await name("v6"); await type("AAAA"); await lines("2001:db8::1"); });
+  await record(async () => { await name("child"); await type("NS"); await lines("ns1.example.net\nns2.example.net"); });
+  await record(async () => { await name("ptr"); await type("PTR"); await lines("host.example.net"); });
+  await record(async () => {
+    await name("_sip._tcp");
+    await type("SRV");
+    await page.getByRole("textbox", { name: "Port 1" }).fill("5060");
+    await page.getByRole("textbox", { name: "Target 1" }).fill("sip.example.net");
+  });
+  await record(async () => {
+    await type("CAA");
+    await page.getByRole("textbox", { name: "Value 1", exact: true }).fill("letsencrypt.org");
+  });
+  await record(async () => {
+    await name("cdn");
+    await page.getByText("Alias", { exact: true }).first().click();
+    await page.getByRole("textbox", { name: "Alias target" }).fill("d111111abcdef8.cloudfront.net");
+  });
+  await record(async () => {
+    await name("w");
+    await lines("192.0.2.1");
+    await chooseOption(page, "Routing policy", /^Weighted/);
+    await page.getByLabel("Record ID").fill("one");
+  });
+
+  // all of them are listed, with the right types
+  await page.goto(zoneUrl);
+  for (const host of ["v6", "child", "ptr", "_sip._tcp", "cdn", "w"]) {
+    await expect(page.getByRole("link", { name: `${host}.${zone}`, exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole("heading", { name: "Records (9)" })).toBeVisible();
+  await expect(page.getByRole("row", { name: /cdn.types-test.com.*Yes/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /w.types-test.com.*Weight: 100/ })).toBeVisible();
+
+  // clean up
+  await page.getByRole("button", { name: "Delete zone" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("checkbox").check();
+  await dialog.getByPlaceholder("delete").fill("delete");
+  await dialog.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText(`Hosted zone ${zone} was deleted.`)).toBeVisible();
+});

@@ -12,8 +12,9 @@ const python = path.resolve("..", "backend", ".venv", isWindows ? "Scripts" : "b
  * touches the development database. Set PW_CHANNEL=chrome|msedge to use an installed browser
  * instead of Playwright's bundled Chromium.
  */
-export default defineConfig({
+const config = defineConfig({
   testDir: "./e2e",
+  testIgnore: "**/screenshots/**",
   timeout: 90_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
@@ -44,3 +45,5 @@ export default defineConfig({
     },
   ],
 });
+
+export default config;
