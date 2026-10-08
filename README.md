@@ -106,7 +106,7 @@ Sign in with `demo@example.com` / `password`.
 
 Reset the database: `cd backend && python -m app.seed --reset`.
 
-**Docker:** `docker compose up --build` → http://localhost:3000 (data kept in the `db-data` volume).
+**Docker:** `docker compose up --build` → http://localhost:3000 (data kept in the `db-data` volume; verified: login through the proxy works and a created zone survives a backend restart).
 
 ## Environment variables
 See [`.env.example`](.env.example). Defaults work for local development.

@@ -1,7 +1,8 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm ci fails when a lockfile written on Windows lacks Linux-only optional packages.
+RUN npm install --no-audit --no-fund
 COPY . .
 # The /api/* rewrite target is compiled into the build, so it is a build argument.
 ARG BACKEND_URL=http://backend:8000
