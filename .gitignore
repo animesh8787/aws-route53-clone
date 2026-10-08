@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.local
+playwright-report/
+test-results/
+.DS_Store
+*.log
