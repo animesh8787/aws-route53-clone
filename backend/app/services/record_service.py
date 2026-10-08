@@ -2,7 +2,13 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.errors import ConflictError, NotFoundError, ProtectedError, ValidationFailure, field_error
+from app.core.errors import (
+    ConflictError,
+    NotFoundError,
+    ProtectedError,
+    ValidationFailure,
+    field_error,
+)
 from app.dns.validators import parse_value
 from app.models import DnsRecord, HealthCheck, HostedZone
 from app.repositories import record_repo

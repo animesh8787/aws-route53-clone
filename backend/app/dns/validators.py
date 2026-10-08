@@ -69,9 +69,7 @@ def to_fqdn(raw: str, zone_name: str) -> str:
         return f"{zone}."
     absolute = value.endswith(".")
     base = value.rstrip(".")
-    if absolute:
-        fqdn = base
-    elif base == zone or base.endswith("." + zone):
+    if absolute or base == zone or base.endswith("." + zone):
         fqdn = base
     else:
         fqdn = f"{base}.{zone}"

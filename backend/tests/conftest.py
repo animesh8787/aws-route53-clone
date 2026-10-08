@@ -3,13 +3,13 @@ import os
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_route53.db")
 os.environ["SEED_ON_START"] = "false"
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
+import pytest
+from fastapi.testclient import TestClient
 
-from app.core.config import get_settings  # noqa: E402
-from app.db.session import Base, SessionLocal, engine  # noqa: E402
-from app.main import app  # noqa: E402
-from app.seed import ensure_user, seed_health_checks  # noqa: E402
+from app.core.config import get_settings
+from app.db.session import Base, SessionLocal, engine
+from app.main import app
+from app.seed import ensure_user, seed_health_checks
 
 
 @pytest.fixture()

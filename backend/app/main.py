@@ -8,12 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.routers import auth, hosted_zones, records
+from app import models  # noqa: F401  (register tables)
+from app.api.routers import auth, dns, hosted_zones, import_export, records
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.db.session import Base, SessionLocal, engine
-from app import models  # noqa: F401  (register tables)
 
 logger = logging.getLogger("route53")
 
@@ -70,7 +70,7 @@ def create_app() -> FastAPI:
     def health():
         return {"status": "ok"}
 
-    for router in (auth.router, hosted_zones.router, records.zone_records, records.records):
+    for router in (auth.router, hosted_zones.router, records.zone_records, import_export.router, records.records, dns.router):
         app.include_router(router, prefix="/api")
     return app
 
