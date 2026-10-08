@@ -1,13 +1,17 @@
 """Application settings, loaded from environment variables / .env."""
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "sqlite:///./route53.db"
+    database_url: str = f"sqlite:///{(BACKEND_DIR / 'route53.db').as_posix()}"
     secret_key: str = "change-me-in-production"
     cookie_name: str = "r53_session"
     cookie_secure: bool = False
