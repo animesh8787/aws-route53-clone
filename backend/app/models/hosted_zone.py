@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -8,9 +8,10 @@ from app.db.session import Base
 
 class HostedZone(Base):
     __tablename__ = "hosted_zones"
-    __table_args__ = (UniqueConstraint("name", "is_private", name="uq_zone_name_type"),)
+    __table_args__ = (UniqueConstraint("owner_id", "name", "is_private", name="uq_zone_owner_name_type"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     zone_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), index=True)  # stored without trailing dot
     is_private: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -66,7 +66,7 @@ def test_ttl_bounds():
             v.validate_ttl(bad)
 
 
-def test_seed_populates_all_record_types_and_policies(db_ready):
+def test_seed_populates_all_record_types_and_policies(empty_db):
     with SessionLocal() as db:
         seed_all(db)
         seed_all(db)  # idempotent

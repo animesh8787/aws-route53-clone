@@ -8,6 +8,7 @@ import Form from "@cloudscape-design/components/form";
 import FormField from "@cloudscape-design/components/form-field";
 import Header from "@cloudscape-design/components/header";
 import Input from "@cloudscape-design/components/input";
+import Link from "@cloudscape-design/components/link";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -57,7 +58,7 @@ function LoginForm() {
               >
                 <SpaceBetween size="m">
                   {serverError && (
-                    <Alert type="error" header="Authentication failed">
+                    <Alert type="error" header={login.error instanceof ApiError && login.error.status === 429 ? "Too many attempts" : "Authentication failed"}>
                       {serverError}
                     </Alert>
                   )}
@@ -85,6 +86,9 @@ function LoginForm() {
               </Form>
             </form>
           </Container>
+          <Box textAlign="center">
+            New to this console? <Link href="/signup" onFollow={(e) => { e.preventDefault(); router.push("/signup"); }}>Create an account</Link>
+          </Box>
           <Container>
             <SpaceBetween size="xxs">
               <Box variant="h3">Demo account</Box>

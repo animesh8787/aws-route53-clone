@@ -8,6 +8,8 @@ export interface User {
   email: string;
   display_name: string;
   account_id: string;
+  created_at?: string | null;
+  password_changed_at?: string | null;
 }
 
 export interface Page<T> {

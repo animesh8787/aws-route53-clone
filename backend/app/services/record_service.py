@@ -53,9 +53,9 @@ def to_out(record: DnsRecord, zone_id: str) -> RecordOut:
     )
 
 
-def get_or_404(db: Session, record_id: int) -> DnsRecord:
+def get_or_404(db: Session, record_id: int, owner_id: int) -> DnsRecord:
     record = record_repo.get(db, record_id)
-    if record is None:
+    if record is None or record.zone.owner_id != owner_id:
         raise NotFoundError("Record not found.")
     return record
 
@@ -100,10 +100,10 @@ def _check_conflicts(db: Session, zone: HostedZone, data: dict, exclude_id: int 
             raise ConflictError("A geolocation record for this location already exists for this name and type.")
 
 
-def _resolve_health_check(db: Session, public_id: str | None) -> int | None:
+def _resolve_health_check(db: Session, owner_id: int, public_id: str | None) -> int | None:
     if not public_id:
         return None
-    health = db.scalar(select(HealthCheck).where(HealthCheck.health_check_id == public_id))
+    health = db.scalar(select(HealthCheck).where(HealthCheck.health_check_id == public_id, HealthCheck.owner_id == owner_id))
     if health is None:
         raise ValidationFailure("Health check not found.", [field_error("health_check_id", "Health check not found.")])
     return health.id
@@ -119,10 +119,10 @@ def _check_alias_target(db: Session, zone: HostedZone, data: dict, exclude_id: i
         raise ValidationFailure(msg, [field_error("alias.target", msg)])
 
 
-def _check_cidr(db: Session, data: dict) -> None:
+def _check_cidr(db: Session, owner_id: int, data: dict) -> None:
     if data["routing_policy"] != "ipbased":
         return
-    collection = db.scalar(select(Resource).where(Resource.kind == "cidr_collection", Resource.public_id == data["cidr_collection_id"]))
+    collection = db.scalar(select(Resource).where(Resource.owner_id == owner_id, Resource.kind == "cidr_collection", Resource.public_id == data["cidr_collection_id"]))
     if collection is None:
         msg = "CIDR collection not found."
         raise ValidationFailure(msg, [field_error("cidr_collection_id", msg)])
@@ -134,9 +134,9 @@ def _check_cidr(db: Session, data: dict) -> None:
 
 def _prepare(db: Session, zone: HostedZone, payload: RecordIn, exclude_id: int | None, *, allow_soa: bool = False) -> dict:
     data = normalize_record(zone.name, zone.zone_id, payload, allow_soa=allow_soa)
-    data["health_check_id"] = _resolve_health_check(db, data["health_check_id"])
+    data["health_check_id"] = _resolve_health_check(db, zone.owner_id, data["health_check_id"])
     _check_alias_target(db, zone, data, exclude_id)
-    _check_cidr(db, data)
+    _check_cidr(db, zone.owner_id, data)
     _check_conflicts(db, zone, data, exclude_id)
     return data
 

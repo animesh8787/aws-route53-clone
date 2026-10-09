@@ -44,9 +44,10 @@ def list_mock_vpcs(region: str | None = None):
 
 @router.get("/dashboard/summary", response_model=DashboardSummary)
 def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    zones = db.scalar(select(func.count()).select_from(HostedZone)) or 0
-    private = db.scalar(select(func.count()).where(HostedZone.is_private.is_(True))) or 0
-    recent = db.scalars(select(HostedZone).order_by(HostedZone.created_at.desc(), HostedZone.id.desc()).limit(5)).all()
+    mine = HostedZone.owner_id == user.id
+    zones = db.scalar(select(func.count()).select_from(HostedZone).where(mine)) or 0
+    private = db.scalar(select(func.count()).where(mine, HostedZone.is_private.is_(True))) or 0
+    recent = db.scalars(select(HostedZone).where(mine).order_by(HostedZone.created_at.desc(), HostedZone.id.desc()).limit(5)).all()
     health = select(func.count()).select_from(HealthCheck).where(HealthCheck.owner_id == user.id)
     by_kind = dict(db.execute(select(Resource.kind, func.count()).where(Resource.owner_id == user.id).group_by(Resource.kind)).all())
     soon = (datetime.utcnow() + timedelta(days=60)).isoformat(timespec="seconds")
@@ -61,7 +62,7 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
         hosted_zones=zones,
         public_zones=zones - private,
         private_zones=private,
-        records=db.scalar(select(func.count()).select_from(DnsRecord)) or 0,
+        records=db.scalar(select(func.count()).select_from(DnsRecord).join(HostedZone, HostedZone.id == DnsRecord.hosted_zone_id).where(mine)) or 0,
         health_checks=db.scalar(health) or 0,
         unhealthy_health_checks=db.scalar(health.where(HealthCheck.status == "UNHEALTHY")) or 0,
         counts=counts,

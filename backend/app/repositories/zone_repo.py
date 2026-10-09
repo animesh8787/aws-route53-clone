@@ -13,22 +13,23 @@ SORT_COLUMNS = {
 }
 
 
-def get_by_ref(db: Session, ref: str) -> HostedZone | None:
-    """Look a zone up by public zone id (``Z0123...``) or numeric primary key."""
+def get_by_ref(db: Session, ref: str, owner_id: int) -> HostedZone | None:
+    """Look one of the owner's zones up by public zone id (``Z0123...``) or numeric primary key."""
     if ref.isdigit():
         zone = db.get(HostedZone, int(ref))
-        if zone:
+        if zone and zone.owner_id == owner_id:
             return zone
-    return db.scalar(select(HostedZone).where(HostedZone.zone_id == ref))
+    return db.scalar(select(HostedZone).where(HostedZone.zone_id == ref, HostedZone.owner_id == owner_id))
 
 
-def find_duplicate(db: Session, name: str, is_private: bool) -> HostedZone | None:
-    return db.scalar(select(HostedZone).where(HostedZone.name == name, HostedZone.is_private == is_private))
+def find_duplicate(db: Session, owner_id: int, name: str, is_private: bool) -> HostedZone | None:
+    return db.scalar(select(HostedZone).where(HostedZone.owner_id == owner_id, HostedZone.name == name, HostedZone.is_private == is_private))
 
 
 def search(
     db: Session,
     *,
+    owner_id: int,
     q: str | None,
     zone_type: str | None,
     sort: str,
@@ -36,7 +37,7 @@ def search(
     page: int,
     page_size: int,
 ) -> tuple[list[HostedZone], int]:
-    query = select(HostedZone)
+    query = select(HostedZone).where(HostedZone.owner_id == owner_id)
     if q:
         like = f"%{q.strip().lower()}%"
         query = query.where(

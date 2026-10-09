@@ -55,8 +55,8 @@ def to_out(zone: HostedZone) -> HostedZoneOut:
     )
 
 
-def get_or_404(db: Session, ref: str) -> HostedZone:
-    zone = zone_repo.get_by_ref(db, ref)
+def get_or_404(db: Session, ref: str, owner_id: int) -> HostedZone:
+    zone = zone_repo.get_by_ref(db, ref, owner_id)
     if zone is None:
         raise NotFoundError("Hosted zone not found.")
     return zone
@@ -67,7 +67,7 @@ def refresh_record_count(db: Session, zone: HostedZone) -> None:
     zone.record_count = db.scalar(select(func.count()).where(DnsRecord.hosted_zone_id == zone.id)) or 0
 
 
-def create_zone(db: Session, payload: HostedZoneCreate, *, created_by: str = "Route 53", zone_id: str | None = None, commit: bool = True) -> HostedZone:
+def create_zone(db: Session, payload: HostedZoneCreate, *, owner_id: int, created_by: str = "Route 53", zone_id: str | None = None, commit: bool = True) -> HostedZone:
     errors = []
     name = None
     try:
@@ -79,11 +79,12 @@ def create_zone(db: Session, payload: HostedZoneCreate, *, created_by: str = "Ro
         errors.append(field_error("vpc", "A private hosted zone must be associated with a VPC."))
     if errors:
         raise ValidationFailure(errors[0]["message"], errors)
-    if zone_repo.find_duplicate(db, name, is_private):
+    if zone_repo.find_duplicate(db, owner_id, name, is_private):
         kind = "private" if is_private else "public"
         raise ConflictError(f"A {kind} hosted zone for '{name}' already exists.")
 
     zone = HostedZone(
+        owner_id=owner_id,
         zone_id=zone_id or generate_zone_id(),
         name=name,
         is_private=is_private,

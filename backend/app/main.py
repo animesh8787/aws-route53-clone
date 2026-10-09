@@ -9,13 +9,23 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import models  # noqa: F401  (register tables)
-from app.api.routers import activity, auth, billing, dns, domains, health_checks, hosted_zones, import_export, records, resolver, resources
+from app.api.routers import account, activity, auth, billing, dns, domains, health_checks, hosted_zones, import_export, records, resolver, resources
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.db.session import Base, SessionLocal, engine
 
 logger = logging.getLogger("route53")
+
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+CSRF_HEADER_VALUE = "fetch"
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+}
 
 
 def _error(status: int, detail: str, errors: list | None = None) -> JSONResponse:
@@ -47,6 +57,19 @@ def create_app() -> FastAPI:
         allow_methods=["*"], allow_headers=["*"],
     )  # fmt: skip
 
+    @app.middleware("http")
+    async def _csrf_and_headers(request: Request, call_next):
+        """CSRF: browsers cannot attach a custom header to a cross-site request without a CORS preflight,
+        so requiring one on state-changing calls (on top of SameSite=Lax cookies) blocks forged requests."""
+        if request.method not in SAFE_METHODS and request.url.path.startswith("/api") and request.headers.get("x-requested-with") != CSRF_HEADER_VALUE:
+            return _error(403, "Missing or invalid request header. This request was blocked to protect your account.")
+        response = await call_next(request)
+        for header, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(header, value)
+        if request.url.path.startswith("/api/auth") or request.url.path.startswith("/api/account"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError):
         return _error(exc.status_code, exc.detail, exc.errors)
@@ -72,7 +95,7 @@ def create_app() -> FastAPI:
 
     routers = (
         auth.router, hosted_zones.router, records.zone_records, import_export.router, records.records,
-        dns.router, health_checks.router, domains.router, resolver.router, resources.router, activity.router, billing.router,
+        dns.router, health_checks.router, domains.router, resolver.router, resources.router, activity.router, billing.router, account.router,
     )  # fmt: skip
     for router in routers:
         app.include_router(router, prefix="/api")

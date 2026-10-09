@@ -38,7 +38,7 @@ def _validate(db: Session, owner_id: int, data: dict, existing: Resource | None)
     if unknown:
         errors.append(field_error("vpc_ids", f"Unknown VPC: {unknown[0]}."))
     if data["zone_ids"]:
-        found = {z.zone_id: z for z in db.scalars(select(HostedZone).where(HostedZone.zone_id.in_(data["zone_ids"])))}
+        found = {z.zone_id: z for z in db.scalars(select(HostedZone).where(HostedZone.owner_id == owner_id, HostedZone.zone_id.in_(data["zone_ids"])))}
         for zone_id in data["zone_ids"]:
             zone = found.get(zone_id)
             if zone is None or not zone.is_private:

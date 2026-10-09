@@ -31,6 +31,7 @@ class _Ctx:
     client_country: str | None
     client_continent: str | None
     client_ip: str | None = None
+    owner_id: int = 0
     trace: list[str] = field(default_factory=list)
 
 
@@ -39,10 +40,10 @@ def _healthy(record: DnsRecord) -> bool:
     return hc is None or hc.disabled or hc.status == "HEALTHY"
 
 
-def _find_zone(db: Session, fqdn: str, view: str, source_vpc: str | None = None) -> HostedZone | None:
+def _find_zone(db: Session, owner_id: int, fqdn: str, view: str, source_vpc: str | None = None) -> HostedZone | None:
     """Longest-suffix zone. From a VPC only public zones and private zones associated with that VPC are visible."""
     name = fqdn.rstrip(".")
-    zones = db.scalars(select(HostedZone)).all()
+    zones = db.scalars(select(HostedZone).where(HostedZone.owner_id == owner_id)).all()
     if source_vpc:
         zones = [z for z in zones if not z.is_private or any(a.vpc_id == source_vpc for a in z.vpcs)]
     matches = [z for z in zones if name == z.name or name.endswith("." + z.name)]
@@ -136,7 +137,7 @@ def _ip_based_match(ctx: _Ctx, records: list[DnsRecord]) -> DnsRecord | None:
     for record in records:
         if record.cidr_location == "*":
             continue
-        collection = ctx.db.scalar(select(Resource).where(Resource.kind == "cidr_collection", Resource.public_id == record.cidr_collection_id))
+        collection = ctx.db.scalar(select(Resource).where(Resource.owner_id == ctx.owner_id, Resource.kind == "cidr_collection", Resource.public_id == record.cidr_collection_id))
         if collection is None:
             continue
         for location in collection.data.get("locations", []):
@@ -178,7 +179,7 @@ def _resolve(ctx: _Ctx, zone: HostedZone, name: str, rtype: str, depth: int = 0)
             target = record.values[0] if record.values else None
             ctx.trace.append(f"{name} is a CNAME to {target}.")
             answers = [Answer(name=name, type="CNAME", ttl=record.ttl or 0, value=target or "")]
-            if target and (target_zone := _find_zone(ctx.db, target, "public")) is not None:
+            if target and (target_zone := _find_zone(ctx.db, ctx.owner_id, target, "public")) is not None:
                 tail, _, rcode = _resolve(ctx, target_zone, target, rtype, depth + 1)
                 return answers + tail, record, rcode
             ctx.trace.append("CNAME target is outside the hosted zones in this account; stopping.")
@@ -213,7 +214,7 @@ def _resolve_alias(ctx: _Ctx, zone: HostedZone, name: str, record: DnsRecord, rt
 def resolve(
     db: Session, name: str, rtype: str, *, view: str = "public", client_region: str | None = None,
     client_country: str | None = None, client_continent: str | None = None, client_ip: str | None = None, seed: int | None = None,
-    source_vpc: str | None = None, owner_id: int | None = None,
+    source_vpc: str | None = None, owner_id: int,
 ) -> ResolveResponse:  # fmt: skip
     rtype = rtype.upper()
     try:
@@ -222,12 +223,12 @@ def resolve(
         return ResolveResponse(name=name, type=rtype, rcode="FORMERR", answers=[], trace=[str(exc)])
     continent = (client_continent or "").upper() or (REGION_CONTINENT.get((client_region or "").split("-")[0]) if client_region else None)
     country = (client_country or "").upper() or None
-    ctx = _Ctx(db, random.Random(seed), client_region, country, continent, (client_ip or "").strip() or None)
+    ctx = _Ctx(db, random.Random(seed), client_region, country, continent, (client_ip or "").strip() or None, owner_id)
 
     vpc = (source_vpc or "").strip() or None
     if vpc and vpc not in VPC_BY_ID:
         return ResolveResponse(name=fqdn, type=rtype, rcode="FORMERR", answers=[], trace=[f"Unknown source VPC '{vpc}'."])
-    if vpc and owner_id is not None:
+    if vpc:
         ctx.trace.append(f"Query originates in {vpc} ({VPC_BY_ID[vpc]['name']}).")
         for config in resolver_policy.logging_destinations(db, owner_id, vpc):
             ctx.trace.append(f"Query logging: this query is logged to {config.data['destination_arn']} ({config.name}).")
@@ -236,8 +237,8 @@ def resolve(
         if verdict.action == "BLOCK":
             return _blocked_response(fqdn, rtype, verdict, ctx.trace)
 
-    zone = _find_zone(db, fqdn, view, vpc)
-    if zone is None and vpc and owner_id is not None:
+    zone = _find_zone(db, owner_id, fqdn, view, vpc)
+    if zone is None and vpc:
         rule = resolver_policy.matching_rule(db, owner_id, vpc, fqdn)
         if rule is not None and rule.data["rule_type"] == "FORWARD":
             targets = [f"{t['ip']}:{t['port']}" for t in rule.data["target_ips"]]

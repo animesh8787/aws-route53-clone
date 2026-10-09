@@ -32,7 +32,7 @@ def _find_policy(db: Session, owner_id: int, policy_id: str) -> Resource:
 
 def _validate(db: Session, owner_id: int, data: dict, existing: Resource | None) -> dict:
     errors = []
-    zone = db.scalar(select(HostedZone).where(HostedZone.zone_id == data["zone_id"]))
+    zone = db.scalar(select(HostedZone).where(HostedZone.owner_id == owner_id, HostedZone.zone_id == data["zone_id"]))
     if zone is None:
         raise ValidationFailure("Hosted zone not found.", [field_error("zone_id", "Hosted zone not found.")])
     try:
@@ -75,7 +75,7 @@ def _health_pk(db: Session, owner_id: int, public_id: str | None) -> str | None:
 
 def _materialise(db: Session, owner_id: int, policy_record: Resource) -> None:
     data = policy_record.data
-    zone = db.scalar(select(HostedZone).where(HostedZone.zone_id == data["zone_id"]))
+    zone = db.scalar(select(HostedZone).where(HostedZone.owner_id == owner_id, HostedZone.zone_id == data["zone_id"]))
     policy = _find_policy(db, owner_id, data["policy_id"])
     document = next(ver["document"] for ver in policy.data["versions"] if ver["version"] == data["policy_version"])
     for entry in record_plan(document, data["record_type"]):
@@ -91,7 +91,7 @@ def _materialise(db: Session, owner_id: int, policy_record: Resource) -> None:
 
 
 def _drop_records(db: Session, policy_record: Resource) -> None:
-    zone = db.scalar(select(HostedZone).where(HostedZone.zone_id == policy_record.data["zone_id"]))
+    zone = db.scalar(select(HostedZone).where(HostedZone.owner_id == policy_record.owner_id, HostedZone.zone_id == policy_record.data["zone_id"]))
     for record in _records(db, policy_record):
         db.delete(record)
     if zone is not None:

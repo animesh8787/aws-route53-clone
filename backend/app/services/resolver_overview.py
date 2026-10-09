@@ -21,7 +21,8 @@ def overview(db: Session, owner_id: int, vpc: dict, by_kind: dict[str, list[Reso
     logging = [r for r in by_kind["query_logging"] if vpc_id in r.data.get("vpc_ids", [])]
     groups = [r for r in by_kind["fw_rule_group"] if any(a["vpc_id"] == vpc_id for a in r.data.get("associations", []))]
     profile = next((r for r in by_kind["profile"] if vpc_id in r.data.get("vpc_ids", [])), None)
-    zones = db.scalars(select(HostedZone).join(VpcAssociation, VpcAssociation.hosted_zone_id == HostedZone.id).where(VpcAssociation.vpc_id == vpc_id)).unique().all()
+    zone_query = select(HostedZone).join(VpcAssociation, VpcAssociation.hosted_zone_id == HostedZone.id)
+    zones = db.scalars(zone_query.where(VpcAssociation.vpc_id == vpc_id, HostedZone.owner_id == owner_id)).unique().all()
     return {
         "id": vpc_id, "name": vpc["name"], "region": vpc["region"], "cidr": vpc["cidr"], "status": "ACTIVE",
         "inbound_endpoints": [_brief(r) for r in inbound], "outbound_endpoints": [_brief(r) for r in outbound],

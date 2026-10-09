@@ -31,7 +31,8 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
     response = await fetch(`/api${path}${toQueryString(query)}`, {
       method,
       credentials: "same-origin",
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      // The custom header is the CSRF defence: cross-site requests cannot add it without a CORS preflight.
+      headers: { "X-Requested-With": "fetch", ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
@@ -64,7 +65,7 @@ export const api = {
   post: <T>(path: string, body?: unknown, query?: Query) => request<T>("POST", path, body ?? {}, query),
   put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
   patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
-  delete: <T>(path: string, query?: Query) => request<T>("DELETE", path, undefined, query),
+  delete: <T>(path: string, query?: Query, body?: unknown) => request<T>("DELETE", path, body, query),
 };
 
 /** Backend file download URL (used for JSON / BIND export). */

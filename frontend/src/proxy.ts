@@ -10,7 +10,7 @@ const SESSION_COOKIE = "r53_session";
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname === "/login" || request.cookies.has(SESSION_COOKIE)) {
+  if (pathname === "/login" || pathname === "/signup" || request.cookies.has(SESSION_COOKIE)) {
     return NextResponse.next();
   }
   const url = request.nextUrl.clone();

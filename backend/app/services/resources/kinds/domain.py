@@ -90,9 +90,9 @@ def _validate(db: Session, owner_id: int, data: dict, existing: Resource | None)
 def _after_create(db: Session, owner_id: int, domain: Resource) -> None:
     data = dict(domain.data)
     now = datetime.utcnow()
-    zone = db.scalar(select(HostedZone).where(HostedZone.name == domain.name, HostedZone.is_private.is_(False)))
+    zone = db.scalar(select(HostedZone).where(HostedZone.owner_id == owner_id, HostedZone.name == domain.name, HostedZone.is_private.is_(False)))
     if zone is None:
-        zone = zone_service.create_zone(db, HostedZoneCreate(name=domain.name, comment="Created by domain registration"), commit=False)
+        zone = zone_service.create_zone(db, HostedZoneCreate(name=domain.name, comment="Created by domain registration"), owner_id=owner_id, commit=False)
     data.update(
         registered_at=now.isoformat(timespec="seconds"), expires_at=domain_service.new_expiry(data["years"], now), zone_id=zone.zone_id, auth_code=None,
         name_servers=data["name_servers"] or zone_service.name_servers(zone.zone_id),
@@ -109,7 +109,7 @@ def _after_update(db: Session, owner_id: int, domain: Resource) -> None:
 def _present(db: Session, resource: Resource, flat: dict) -> dict:
     expires = datetime.fromisoformat(flat["expires_at"])
     days = (expires - datetime.utcnow()).days
-    zone = db.scalar(select(HostedZone).where(HostedZone.zone_id == flat.get("zone_id")))
+    zone = db.scalar(select(HostedZone).where(HostedZone.owner_id == resource.owner_id, HostedZone.zone_id == flat.get("zone_id")))
     return {"days_to_expiry": days, "zone_name": zone.name if zone else None, "expiring_soon": 0 <= days <= 60}
 
 

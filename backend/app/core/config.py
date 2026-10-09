@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     demo_email: str = "demo@example.com"
     demo_password: str = "password"
     log_level: str = "INFO"
+    allow_registration: bool = True
+    max_failed_logins: int = 5
+    lockout_minutes: int = 15
+    max_sessions_per_user: int = 10
 
     @field_validator("database_url", mode="before")
     @classmethod

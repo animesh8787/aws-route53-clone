@@ -31,7 +31,7 @@ def _line(service: str, description: str, quantity: float, unit_price: float, mo
 
 def estimate(db: Session, owner_id: int) -> dict:
     lines: list[dict] = []
-    zones = db.scalar(select(func.count()).select_from(HostedZone)) or 0
+    zones = db.scalar(select(func.count()).select_from(HostedZone).where(HostedZone.owner_id == owner_id)) or 0
     if zones:
         first, more = min(zones, 25), max(zones - 25, 0)
         lines.append(_line("Route 53 hosted zones", "First 25 hosted zones", first, 0.50, first * 0.50))

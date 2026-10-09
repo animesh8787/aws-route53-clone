@@ -10,13 +10,13 @@ from app.models import User
 from app.schemas.importexport import ImportRequest, ImportResult
 from app.services import activity_service, bind_service, record_service, zone_service
 
-router = APIRouter(prefix="/hosted-zones/{zone_ref}", tags=["import/export"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/hosted-zones/{zone_ref}", tags=["import/export"])
 
 
 @router.post("/import", response_model=ImportResult)
 def import_zone_file(zone_ref: str, body: ImportRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Parse a BIND zone file. With ``dry_run`` nothing is saved and the result is a preview."""
-    zone = zone_service.get_or_404(db, zone_ref)
+    zone = zone_service.get_or_404(db, zone_ref, user.id)
     result = bind_service.import_zone_file(db, zone, body.content, dry_run=body.dry_run, skip_invalid=body.skip_invalid)
     if result.committed:
         activity_service.log(db, user.id, "imported", "Zone file", f"{result.created} record(s) into {zone.name}", href=f"/hosted-zones/{zone.zone_id}")
@@ -24,8 +24,8 @@ def import_zone_file(zone_ref: str, body: ImportRequest, user: User = Depends(ge
 
 
 @router.get("/export")
-def export_zone(zone_ref: str, format: Literal["json", "bind"] = "json", db: Session = Depends(get_db)):
-    zone = zone_service.get_or_404(db, zone_ref)
+def export_zone(zone_ref: str, format: Literal["json", "bind"] = "json", user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    zone = zone_service.get_or_404(db, zone_ref, user.id)
     records = bind_service.all_records(db, zone)
     if format == "bind":
         body = bind_service.export_bind(zone, records)
