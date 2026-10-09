@@ -448,3 +448,17 @@ test("Amazon Q: suggestions, streamed answer, search hand-off, diagnose and hist
   await page.getByRole("button", { name: "Diagnose with Amazon Q" }).click();
   await expect(page.getByRole("complementary", { name: "Amazon Q" }).getByRole("log")).toContainText("Diagnose this error");
 });
+
+test("phone layout: no sideways scrolling and menus stay on screen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  for (const path of ["/dashboard", "/home", "/hosted-zones", "/hosted-zones/Z04512872OH7L5Q4YLRPT", "/health-checks", "/billing"]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading").first()).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, `${path} scrolls sideways`).toBeLessThanOrEqual(0);
+  }
+  await page.getByRole("button", { name: "Services" }).click();
+  const box = await page.getByRole("heading", { name: "Recently visited" }).last().boundingBox();
+  expect(box && box.x + box.width).toBeLessThanOrEqual(390);
+});

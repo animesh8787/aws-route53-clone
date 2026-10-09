@@ -68,12 +68,12 @@ export default function HomePage() {
 
   return (
     <SpaceBetween size="xl">
-      <div style={{ background: "#0f141a", color: "#ffffff", margin: "-20px -40px 0", padding: "32px 40px 40px", borderRadius: 0 }}>
+      <div className="r53-home-hero">
         <Grid gridDefinition={[{ colspan: { default: 12, m: 8 } }, { colspan: { default: 12, m: 4 } }]}>
           <div>
             <div style={{ fontSize: 12, color: "#d1d5db", marginBottom: 8 }}>Networking & Content Delivery</div>
-            <h1 style={{ margin: 0, fontSize: 40, lineHeight: "48px", fontWeight: 700, color: "#ffffff" }}>Amazon Route 53</h1>
-            <div style={{ fontSize: 32, lineHeight: "40px", fontWeight: 300, marginTop: 4, color: "#ffffff" }}>A reliable way to route users to internet applications</div>
+            <h1 style={{ margin: 0, fontSize: "var(--r53-hero-title, 40px)", lineHeight: 1.2, fontWeight: 700, color: "#ffffff" }}>Amazon Route 53</h1>
+            <div style={{ fontSize: "var(--r53-hero-sub, 32px)", lineHeight: 1.25, fontWeight: 300, marginTop: 4, color: "#ffffff" }}>A reliable way to route users to internet applications</div>
             <p style={{ fontSize: 14, color: "#d1d5db", marginTop: 16, maxWidth: 640 }}>
               Amazon Route 53 is a highly available and scalable cloud Domain Name System (DNS) web service. Register domains, route traffic with hosted zones and
               routing policies, monitor endpoints with health checks and resolve DNS inside your VPCs.

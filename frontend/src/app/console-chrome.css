@@ -924,12 +924,69 @@
     padding-right: 10px;
   }
   .r53-account-btn {
-    max-width: 110px;
+    max-width: 96px;
   }
   .r53-account-btn > span {
-    max-width: 80px;
+    max-width: 64px;
+  }
+  /* Phones: icons on the first row, the search box on its own row below */
+  .r53-topbar {
+    align-items: flex-start;
+    height: auto;
+    min-height: 40px;
+    padding: 4px 8px;
+  }
+  .r53-topbar-left {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .r53-topbar-left .r53-search {
+    order: 9;
+    flex: 1 0 100%;
+    margin: 0 0 4px;
+  }
+  .r53-topbar-right {
+    padding-top: 2px;
   }
   .r53-footer-copy {
     display: none;
+  }
+}
+
+/* Home page hero: full-bleed band that follows the content padding of the layout */
+.r53-home-hero {
+  --r53-hero-title: 40px;
+  --r53-hero-sub: 32px;
+  background: #0f141a;
+  color: #ffffff;
+  margin: -20px -40px 0;
+  padding: 32px 40px 40px;
+}
+@media (max-width: 760px) {
+  .r53-home-hero {
+    --r53-hero-title: 30px;
+    --r53-hero-sub: 22px;
+    margin: -20px -16px 0;
+    padding: 24px 16px 28px;
+  }
+}
+
+/* Phones: top-bar menus span the screen width under the two-row top bar instead of hanging off the trigger */
+@media (max-width: 760px) {
+  .r53-pop {
+    position: fixed !important;
+    top: 84px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-height: calc(100vh - 140px);
+    overflow: auto;
+  }
+  .r53-services {
+    width: 100%;
+    height: calc(100vh - 150px);
+  }
+  .r53-services-nav {
+    flex-basis: 128px;
   }
 }
