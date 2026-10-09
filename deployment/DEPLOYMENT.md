@@ -14,6 +14,8 @@ The browser only ever talks to the Vercel origin. `frontend/next.config.ts` rewr
 3. Vercel → import repo, Root Directory `frontend`, env `BACKEND_URL=https://<service>.onrender.com`.
 4. Open the Vercel URL and sign in with `demo@example.com` / `password`.
 
+5. Optional, for the Amazon Q panel: create a free key at console.groq.com and add it as `GROQ_API_KEY` in the Render environment (server side only; it is never sent to the browser).
+
 Free Render services sleep after ~15 minutes idle; the first request afterwards takes ~30-60 s while the API wakes and re-seeds.
 
 ## Persistence options (SQLite on free hosting)

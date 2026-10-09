@@ -11,7 +11,7 @@ A functional clone of the **AWS Route 53 management console**: hosted zones and 
 ![Hosted zone detail](docs/screenshots/05-hosted-zone-detail.png)
 
 ## Contents
-1. [Features](#features) · 2. [Screenshots](#screenshots) · 3. [UI/UX approach](#uiux-approach) · 4. [Architecture](#architecture) · 5. [Folder structure](#folder-structure) · 6. [Local setup](#local-setup) · 7. [Environment variables](#environment-variables) · 8. [Database schema](#database-schema) · 9. [API overview](#api-overview) · 10. [DNS records & validation](#dns-records--validation) · 11. [Routing policies](#routing-policies) · 12. [DNS simulator](#dns-simulator) · 13. [Console areas](#console-areas) · 14. [BIND import / export](#bind-import--export) · 15. [Security](#security) · 16. [Testing](#testing) · 17. [Deployment](#deployment) · 18. [Known limitations](#known-limitations)
+1. [Features](#features) · 2. [Screenshots](#screenshots) · 3. [UI/UX approach](#uiux-approach) · 4. [Architecture](#architecture) · 5. [Folder structure](#folder-structure) · 6. [Local setup](#local-setup) · 7. [Environment variables](#environment-variables) · 8. [Database schema](#database-schema) · 9. [API overview](#api-overview) · 10. [DNS records & validation](#dns-records--validation) · 11. [Routing policies](#routing-policies) · 12. [DNS simulator](#dns-simulator) · 13. [Console areas](#console-areas) · 14. [Amazon Q assistant](#amazon-q-assistant) · 15. [BIND import / export](#bind-import--export) · 16. [Security](#security) · 17. [Testing](#testing) · 18. [Deployment](#deployment) · 19. [Known limitations](#known-limitations)
 
 ## Features
 **Core (assignment scope)**
@@ -29,6 +29,10 @@ A functional clone of the **AWS Route 53 management console**: hosted zones and 
 - A **DNS simulator** ("Test record") that answers queries from the stored data, optionally from a source VPC (firewall, forwarding, private zones, query logging).
 - **Billing** estimate computed from your resources, **notifications** and an activity feed, hosted zone **tags** and **DNSSEC** (simulated keys).
 - **Real accounts**: sign up with password rules, lockout, rate limits, CSRF protection, security headers, sessions list and revocation, change password, per-user data isolation, sample data.
+- **Console chrome like AWS**: dark top bar with a console-wide search, the Services menu (all categories, favourites, recently visited), notifications, a settings menu (theme, shortcuts), an account menu, the footer with **CloudShell**, Feedback, Privacy and Terms, and a **Home** page that new accounts land on.
+- **[Amazon Q](#amazon-q-assistant)** chat panel (Ctrl+I): reads your own zones, records and health checks, explains DNS and Route 53, and guides changes with console steps, CLI commands or CloudFormation. It never changes anything itself.
+- **CloudShell**: a simulated, read-only shell (`aws route53 …`, `aws route53domains …`, `aws sts get-caller-identity`, `dig`, `nslookup`, `help`) that answers from your own data.
+- **Global resolvers, shared DNS views and Resolver on Outposts**, domain **transfer in** and a **billing report**.
 
 **Bonus items**
 - BIND zone-file **import** (upload or paste, preview, confirm) and **export** as JSON or BIND; **dark mode**; **keyboard shortcuts**; **bulk operations** (delete and edit TTL).
@@ -49,6 +53,9 @@ A functional clone of the **AWS Route 53 management console**: hosted zones and 
 | ![Billing](docs/screenshots/35-billing.png) Billing estimate | ![Activity](docs/screenshots/36-activity.png) Activity |
 | ![Account](docs/screenshots/37-account.png) Account | ![Security](docs/screenshots/38-security-credentials.png) Security credentials |
 | ![Notifications](docs/screenshots/39-notifications.png) Notifications | ![Help](docs/screenshots/41-help-panel.png) Help panel |
+| ![Home](docs/screenshots/42-home.png) Home | ![Global resolvers](docs/screenshots/43-global-resolvers.png) Global resolvers |
+| ![Amazon Q](docs/screenshots/44-amazon-q-welcome.png) Amazon Q | ![Amazon Q answer](docs/screenshots/45-amazon-q-answer.png) Amazon Q answer |
+| ![CloudShell](docs/screenshots/46-cloudshell.png) CloudShell | ![Services menu](docs/screenshots/40-services-menu.png) Services menu |
 | ![Dark mode](docs/screenshots/16-dark-mode.png) Dark mode | ![Mobile](docs/screenshots/17-mobile.png) Mobile |
 
 Regenerate them with `npm run screenshots` (in `frontend/`).
@@ -83,12 +90,13 @@ backend/
     api/ (deps.py, routers/)   core/ (config, security, errors, ratelimit, ids)   db/
     models/  schemas/  repositories/  dns/ (constants, validators, mock_data)
     services/ (zone, record, validation, resolver, bind, domain, billing, auth, activity ...)
+    services/assistant/ (Amazon Q: Groq client, read-only tools, prompt)
     services/resources/ (framework + kinds/: profile, cidr, traffic policy, policy record, domain, resolver, firewall)
     seed.py  main.py
   alembic/ (migration)   tests/   Dockerfile   pyproject.toml
 frontend/
   src/app/ (login, signup, (console)/ dashboard, hosted-zones, [section] resource pages, billing, account ...)
-  src/components/ (layout, common, resource, states)   src/features/ (auth, records, hosted-zones, resolver, firewall ...)
+  src/components/ (layout, common, resource, states)   src/features/ (auth, records, hosted-zones, resolver, firewall, assistant, cloudshell ...)
   src/hooks/  src/lib/ (api, dns-validation, record-config, record-schema, resource-config)  src/types/
   e2e/ (Playwright)   Dockerfile
 docs/screenshots/   deployment/DEPLOYMENT.md   docker-compose.yml   render.yaml   .env.example
@@ -128,6 +136,10 @@ See [`.env.example`](.env.example). Defaults work for local development.
 | `SEED_ON_START` | backend | Create tables and the demo account's data on startup |
 | `ALLOW_REGISTRATION` | backend | `false` closes sign-up (default `true`) |
 | `MAX_FAILED_LOGINS`, `LOCKOUT_MINUTES` | backend | Account lockout policy (defaults 5 and 15) |
+| `GROQ_API_KEY` | backend | Free key from console.groq.com that switches Amazon Q on (without it the panel says it is not configured) |
+| `GROQ_MODEL`, `GROQ_FALLBACK_MODEL` | backend | Chat models (defaults `openai/gpt-oss-120b`, then `llama-3.3-70b-versatile`) |
+| `ASSISTANT_DAILY_LIMIT` | backend | Questions per user per day (default 100) |
+| `ASSISTANT_FAKE` | backend | `true` answers from stored data without any API call (used by the end-to-end tests) |
 | `BACKEND_URL` | frontend (build time) | Target of the `/api/*` rewrite |
 
 ## Database schema
@@ -143,6 +155,8 @@ SQLite, foreign keys enforced (`PRAGMA foreign_keys=ON`), all child rows cascade
 | `health_checks` | Simulated health checks | `owner_id`, `health_check_id` (unique), `type`, `endpoint`, `port`, `path`, `search_string`, `request_interval`, `failure_threshold`, `regions`, `status`, `history` (JSON) |
 | `resources` | Console objects of every kind | `owner_id`, `kind`, `public_id` (unique), `name`, `status`, `data` (JSON); unique `(owner_id, kind, name)` |
 | `activity_events` | Audit trail / notifications | `owner_id`, `action`, `resource_type`, `resource_name`, `href`, `detail`, `is_read` |
+| `assistant_conversations` | Amazon Q chats | `owner_id`, `public_id` (`conv-…`), `title`, timestamps |
+| `assistant_messages` | Messages of a chat | `conversation_id → assistant_conversations`, `role`, `content`, `feedback` |
 
 **System records.** Creating a zone adds an apex `NS` (four `ns-N.awsdns-NN.{com,net,org,co.uk}.` servers) and `SOA`, derived deterministically from the zone ID and flagged `is_system`. They cannot be deleted (403); only their TTL and values can change. A zone that still has other records can be deleted only after explicit acknowledgement (`?force=true`).
 
@@ -159,10 +173,11 @@ Interactive documentation: `GET /api/docs`. Every endpoint except `auth/register
 | Import / export | `POST /api/hosted-zones/{id}/import` (`dry_run`, `skip_invalid`) · `GET /api/hosted-zones/{id}/export?format=json\|bind` |
 | Simulator | `GET /api/dns/resolve?name=&type=` (+ `client_region`, `client_country`, `client_ip`, `source_vpc`, `seed`) |
 | Health checks | `GET/POST /api/health-checks` · `GET/PUT/DELETE /api/health-checks/{id}` · `PATCH …/{id}/status` · `GET …/{id}/records` |
-| Console resources | `GET/POST /api/resources/{kind}` · `GET/PUT/DELETE /api/resources/{kind}/{id}`; kinds: `profile`, `cidr_collection`, `traffic_policy`, `policy_record`, `domain`, `domain_request`, `resolver_inbound`, `resolver_outbound`, `resolver_rule`, `query_logging`, `fw_domain_list`, `fw_rule_group` (list: `q`, `status`, `filter_<field>`, `sort`, `order`, `page`, `page_size`) |
-| Domains | `GET /api/domains/availability?name=` · `POST /api/domains/{id}/renew · transfer-out` |
+| Console resources | `GET/POST /api/resources/{kind}` · `GET/PUT/DELETE /api/resources/{kind}/{id}`; kinds: `profile`, `cidr_collection`, `traffic_policy`, `policy_record`, `domain`, `domain_request`, `resolver_inbound`, `resolver_outbound`, `resolver_rule`, `query_logging`, `fw_domain_list`, `fw_rule_group`, `global_resolver`, `shared_dns_view` (read-only), `resolver_outpost` (list: `q`, `status`, `filter_<field>`, `sort`, `order`, `page`, `page_size`) |
+| Domains | `GET /api/domains/availability?name=` · `POST /api/domains/{id}/renew · transfer-out` · `POST /api/domains/transfer-in` |
+| Amazon Q | `GET /api/assistant/status` · `POST /api/assistant/chat` (server-sent events) · `GET /api/assistant/conversations` · `GET/DELETE /api/assistant/conversations/{id}` · `DELETE /api/assistant/conversations` · `POST /api/assistant/messages/{id}/feedback` |
 | Resolver | `GET /api/resolver/vpcs` · `GET /api/resolver/vpcs/{vpc_id}` · `GET /api/vpcs` |
-| Other | `GET /api/dashboard/summary` · `GET /api/billing/estimate` · `GET /api/activity` · `GET /api/activity/summary` · `POST /api/activity/read` · `GET /api/health` |
+| Other | `GET /api/dashboard/summary` · `GET /api/billing/estimate` · `GET /api/activity` · `GET /api/activity/summary` · `POST /api/activity/read · feedback` · `GET /api/health` |
 
 ## DNS records & validation
 | Type | Accepted value | Notes |
@@ -213,6 +228,15 @@ Rules enforced on both client and server: label and name length (63/253), wildca
 | Billing | Monthly estimate from your resources with an editable-in-code price table (labelled as an estimate) |
 | Notifications | Unread badge, latest events, full activity list |
 
+## Amazon Q assistant
+The Amazon Q button in the top bar (or **Ctrl+I**) opens a chat panel on the left, laid out like the real console's: new chat, prompt library, history, full screen, suggested prompts, streamed answers with copy buttons and *Helpful / Not helpful* feedback. It uses [Groq](https://console.groq.com)'s free OpenAI-compatible API.
+
+- **What it can do**: look at your own hosted zones, records, health checks, resolver and other resources, the billing estimate and recent activity; resolve names with the simulator; explain AWS and DNS concepts; and give step-by-step console instructions, CLI commands or CloudFormation for changes.
+- **What it cannot do**: change anything. The backend exposes it nine read-only, per-user tools (`get_account_overview`, `list_hosted_zones`, `get_hosted_zone`, `search_records`, `list_health_checks`, `resolve_dns`, `list_console_resources`, `get_billing_estimate`, `recent_activity`); the model decides which to call (up to four rounds per question) and there is no write tool. Questions about topics other than AWS are declined.
+- **Page-aware**: each question carries the current page, so "why is this failing?" works; error alerts have a **Diagnose with Amazon Q** button.
+- **Safety**: text coming from tools or pages is treated as data, never as instructions; per-user limits (12 questions a minute, `ASSISTANT_DAILY_LIMIT` a day, 10,000 characters per message); the API key lives only in the server environment and never reaches the browser; chats are stored per user and removed with *Clear data* or account closure.
+- **Setup**: create a free key at console.groq.com and set `GROQ_API_KEY` (in `backend/.env` locally, in the Render environment when hosted). Without it the panel explains that Amazon Q is not configured. With `ASSISTANT_FAKE=true` it answers from stored data without any API call, which is what the tests use.
+
 ## BIND import / export
 **Import** (`Hosted zone → Import zone file`): paste or upload (up to 1 MB) → *Preview import* (nothing saved; each row shows Valid, Error or Skipped with line number and reason) → *Import*. The import is all-or-nothing unless *Skip invalid records* is ticked.
 
@@ -232,10 +256,10 @@ Supported: `$ORIGIN`, `$TTL` (including `1h`, `2d`), `@`, relative and absolute 
 
 ## Testing
 ```bash
-cd backend && pytest -q                  # 109 tests
+cd backend && pytest -q                  # 123 tests
 cd backend && ruff check app tests
 cd frontend && npm run typecheck && npm run lint
-cd frontend && PW_CHANNEL=chrome npm run test:e2e   # Playwright, 19 tests; omit PW_CHANNEL to use bundled Chromium (npx playwright install chromium)
+cd frontend && PW_CHANNEL=chrome npm run test:e2e   # Playwright, 22 tests; omit PW_CHANNEL to use bundled Chromium (npx playwright install chromium)
 ```
 - **Backend (pytest, isolated SQLite file):** authentication, lockout, rate limits, CSRF, sessions, password change, account isolation across every endpoint, zone and record CRUD, system records, all record types (valid and invalid), conflicts, routing policies, alias, IP-based routing, traffic policies and policy records, BIND import/export, resolver behaviour for every policy plus firewall, forwarding and private zones, domains, health checks, billing, activity, tags, DNSSEC, seed data.
 - **End to end (Playwright, production build, throw-away database):** sign-up validation and sample data, password change and sessions, lockout, the full hosted-zone and record workflow with persistence across sessions, every record type through the editor, BIND import/export, every console area (create, validate, edit, delete), the top bar, billing, tags and DNSSEC, and a smoke test that opens every navigation entry.
@@ -249,5 +273,7 @@ Target: **Vercel** (frontend) + **Render free web service** (API) + **Turso** (h
 - Traffic policies support one rule level (no nested rules) because each rule becomes ordinary routing records.
 - Sign-up has no email verification or password reset (there is no mail service); sessions and lockout are the account protections.
 - Rate limiting is in memory, per API process.
+- Amazon Q needs a `GROQ_API_KEY`; Groq's free tier has its own rate limits, in which case the panel shows a retry message. Answers come from a general-purpose model, not from AWS.
+- CloudShell is a simulation of a handful of read-only commands, not a real shell. Services other than Route 53 in the Services menu open an "not available" notice.
 - Hosted-zone search uses a text filter plus a type dropdown rather than the console's property filter.
 - Only a mock list of 22 countries is offered for geolocation.

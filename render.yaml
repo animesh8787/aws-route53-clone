@@ -21,5 +21,7 @@ services:
         sync: false
       - key: TURSO_AUTH_TOKEN
         sync: false
+      - key: GROQ_API_KEY # free key from console.groq.com; switches the Amazon Q panel on
+        sync: false
       - key: CORS_ORIGINS
         sync: false # set to the Vercel URL, e.g. https://route53-clone.vercel.app
