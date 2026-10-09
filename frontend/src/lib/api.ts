@@ -68,6 +68,74 @@ export const api = {
   delete: <T>(path: string, query?: Query, body?: unknown) => request<T>("DELETE", path, body, query),
 };
 
+export interface StreamEvent {
+  event: string;
+  data: Record<string, unknown>;
+}
+
+/**
+ * POSTs JSON and reads a server-sent-events response, calling `onEvent` for every event as it arrives.
+ * Works when a proxy buffers the stream too: the events are then delivered together at the end.
+ */
+export async function streamPost(path: string, body: unknown, onEvent: (e: StreamEvent) => void, signal?: AbortSignal): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "fetch", "Content-Type": "application/json", Accept: "text/event-stream" },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ApiError(0, "Unable to reach the server. Check your connection and try again.");
+  }
+  if (!response.ok || !response.body) {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    if (response.status === 401 && typeof window !== "undefined") window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+    let detail = "Something went wrong. Please try again.";
+    let errors: FieldError[] = [];
+    try {
+      const data = await response.json();
+      if (typeof data.detail === "string") detail = data.detail;
+      if (Array.isArray(data.errors)) errors = data.errors;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(response.status, detail, errors);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  const flush = (block: string) => {
+    let event = "message";
+    const data: string[] = [];
+    for (const line of block.split(/\r?\n/)) {
+      if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
+    }
+    if (!data.length) return;
+    try {
+      onEvent({ event, data: JSON.parse(data.join("\n")) as Record<string, unknown> });
+    } catch {
+      /* ignore malformed events */
+    }
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let index: number;
+    while ((index = buffer.search(/\r?\n\r?\n/)) >= 0) {
+      const separator = buffer.slice(index).match(/^\r?\n\r?\n/)?.[0].length ?? 2;
+      flush(buffer.slice(0, index));
+      buffer = buffer.slice(index + separator);
+    }
+  }
+  if (buffer.trim()) flush(buffer);
+}
+
 /** Backend file download URL (used for JSON / BIND export). */
 export function exportUrl(zoneId: string, format: "json" | "bind"): string {
   return `/api/hosted-zones/${zoneId}/export${toQueryString({ format })}`;

@@ -9,7 +9,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=(".env", BACKEND_DIR / ".env"), extra="ignore")
 
     database_url: str = f"sqlite:///{(BACKEND_DIR / 'route53.db').as_posix()}"
     turso_auth_token: str = ""  # only for sqlite+libsql:// (Turso) URLs
@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     max_failed_logins: int = 5
     lockout_minutes: int = 15
     max_sessions_per_user: int = 10
+    # Amazon Q-style assistant (Groq, OpenAI-compatible API). Without a key the assistant reports that it is not configured.
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_fallback_model: str = "llama-3.3-70b-versatile"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    assistant_daily_limit: int = 100  # messages per user per UTC day
+    assistant_fake: bool = False  # canned, offline answers (tests and demos without a key)
 
     @field_validator("database_url", mode="before")
     @classmethod

@@ -5,6 +5,7 @@ import Box from "@cloudscape-design/components/box";
 import Button from "@cloudscape-design/components/button";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 
+import { useAssistant, usePageError } from "@/features/assistant/AssistantContext";
 import { ApiError } from "@/lib/api";
 
 /** Table empty state: explains what is missing and offers the next action. */
@@ -29,9 +30,25 @@ export function EmptyState({ title, body, actionLabel, onAction }: { title: stri
 /** Friendly message for failed requests, with a retry action; never shows raw traces. */
 export function ErrorState({ error, onRetry, title = "Unable to load data" }: { error: unknown; onRetry?: () => void; title?: string }) {
   const message = error instanceof ApiError && error.status !== 500 ? error.detail : "Something went wrong on our side. Please try again in a moment.";
+  usePageError(`${title}: ${message}`);
   return (
-    <Alert type="error" header={title} action={onRetry ? <Button onClick={onRetry}>Retry</Button> : undefined}>
+    <Alert type="error" header={title} action={<ErrorActions onRetry={onRetry} text={`${title}: ${message}`} />}>
       {message}
     </Alert>
+  );
+}
+
+/** "Diagnose with Amazon Q" (and Retry) on error alerts, as in the AWS console. */
+export function ErrorActions({ onRetry, text }: { onRetry?: () => void; text: string }) {
+  const assistant = useAssistant();
+  return (
+    <SpaceBetween direction="horizontal" size="xs">
+      {assistant && (
+        <Button iconName="gen-ai" onClick={() => assistant.ask(`Diagnose this error on the page I'm looking at: "${text}"`)}>
+          Diagnose with Amazon Q
+        </Button>
+      )}
+      {onRetry && <Button onClick={onRetry}>Retry</Button>}
+    </SpaceBetween>
   );
 }

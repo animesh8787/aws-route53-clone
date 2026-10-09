@@ -170,6 +170,36 @@ test("capture documentation screenshots", async ({ page }) => {
   await page.getByRole("button", { name: "Help", exact: true }).click();
   await shot(page, "41-help-panel");
 
+  await page.goto("/home");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await shot(page, "42-home");
+  await page.goto("/global-resolvers");
+  await expect(page.getByRole("link", { name: "corp-global-resolver" })).toBeVisible();
+  await shot(page, "43-global-resolvers");
+
+  // ---- Amazon Q panel (answers from stored data when the E2E stack runs with ASSISTANT_FAKE)
+  await page.goto("/hosted-zones");
+  await expect(page.getByRole("link", { name: "acme-corp.io" })).toBeVisible();
+  await page.getByRole("button", { name: "Amazon Q" }).first().click();
+  const ask = page.getByRole("textbox", { name: "Ask Amazon Q" });
+  await expect(ask).toBeVisible();
+  await shot(page, "44-amazon-q-welcome");
+  await ask.fill("List all my hosted zones");
+  await ask.press("Enter");
+  await expect(page.getByRole("button", { name: "Helpful", exact: true })).toBeVisible({ timeout: 30_000 });
+  await shot(page, "45-amazon-q-answer");
+  await page.getByRole("button", { name: "Amazon Q" }).first().click();
+
+  // ---- CloudShell
+  await page.getByRole("button", { name: "CloudShell" }).first().click();
+  const terminal = page.getByRole("textbox", { name: "CloudShell command" });
+  await expect(terminal).toBeVisible();
+  await terminal.fill("aws route53 list-hosted-zones");
+  await terminal.press("Enter");
+  await expect(page.getByText("acme-corp.io").first()).toBeVisible();
+  await shot(page, "46-cloudshell");
+  await page.getByRole("button", { name: "Close CloudShell" }).click();
+
   await page.goto(`/hosted-zones/${EXAMPLE}`);
   await page.evaluate(() => localStorage.setItem("r53-theme", "dark"));
   await page.reload();

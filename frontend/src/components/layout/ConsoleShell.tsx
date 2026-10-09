@@ -8,7 +8,7 @@ import SideNavigation from "@cloudscape-design/components/side-navigation";
 import SplitPanel from "@cloudscape-design/components/split-panel";
 import Spinner from "@cloudscape-design/components/spinner";
 import { usePathname, useRouter } from "next/navigation";
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { ChromeContext, useChromeState } from "@/components/layout/ChromeContext";
 import { ConsoleFooter, FeedbackModal } from "@/components/layout/ConsoleFooter";
@@ -18,7 +18,10 @@ import { HelpPanel } from "@/components/layout/HelpPanel";
 import { NAV_ITEMS, NAV_UNAVAILABLE } from "@/components/layout/nav-items";
 import { ShortcutsProvider } from "@/components/layout/ShortcutsProvider";
 import { SplitPanelProvider, useSplitPanelState } from "@/components/layout/SplitPanelContext";
+import { QLogo } from "@/components/layout/topbar/icons";
 import { TopBar } from "@/components/layout/topbar/TopBar";
+import { AssistantProvider, useAssistant } from "@/features/assistant/AssistantContext";
+import { AssistantPanel } from "@/features/assistant/AssistantPanel";
 import { useCurrentUser, useLogout } from "@/features/auth/hooks";
 import { CloudShell } from "@/features/cloudshell/CloudShell";
 
@@ -31,7 +34,9 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
   return (
     <HelpProvider>
       <SplitPanelProvider>
-        <ConsoleShellInner>{children}</ConsoleShellInner>
+        <AssistantProvider>
+          <ConsoleShellInner>{children}</ConsoleShellInner>
+        </AssistantProvider>
       </SplitPanelProvider>
     </HelpProvider>
   );
@@ -51,6 +56,21 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
   const toggleCloudShell = useCallback(() => setCloudShellOpen((o) => !o), []);
   const splitPanel = useSplitPanelState();
   const [splitPanelOpen, setSplitPanelOpen] = useState(true);
+  const assistant = useAssistant();
+  const [qWidth, setQWidth] = useState(440);
+  const [qExpanded, setQExpanded] = useState(false);
+  const toggleAssistant = assistant?.toggle;
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "i") {
+        event.preventDefault();
+        toggleAssistant?.();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleAssistant]);
 
   if (isPending || !user) {
     return (
@@ -76,6 +96,8 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
     router.push("/login");
   };
 
+  const qOpen = !!assistant?.open;
+
   return (
     <ChromeContext.Provider value={chromeState}>
       <ShortcutsProvider>
@@ -86,39 +108,50 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
           onUnavailable={setUnavailableService}
           onFeedback={() => setFeedbackOpen(true)}
           onSignOut={() => void signOut()}
-        />
-        <AppLayoutToolbar
-          headerSelector="#h"
-          footerSelector="#f"
-          contentType={chromeState.chrome.contentType}
-          tools={<HelpPanel />}
-          toolsOpen={help.isOpen}
-          onToolsChange={({ detail }) => help.setOpen(detail.open)}
-          ariaLabels={{
-            navigation: "Route 53 navigation",
-            navigationToggle: "Open navigation",
-            navigationClose: "Close navigation",
-            tools: "Help panel",
-            toolsToggle: "Open help panel",
-            toolsClose: "Close help panel",
-          }}
-          navigationOpen={navOpen}
-          onNavigationChange={({ detail }) => setNavOpen(detail.open)}
-          navigation={<SideNavigation header={{ text: "Route 53", href: "/dashboard" }} activeHref={activeHref(pathname)} items={NAV_ITEMS} onFollow={follow} />}
-          breadcrumbs={<BreadcrumbGroup items={[{ text: "Route 53", href: "/dashboard" }, ...chromeState.chrome.breadcrumbs]} onFollow={follow} ariaLabel="Breadcrumbs" />}
-          notifications={<FlashMessages />}
-          splitPanel={
-            splitPanel ? (
-              <SplitPanel header={splitPanel.header} hidePreferencesButton closeBehavior="collapse" i18nStrings={{ openButtonAriaLabel: "Open panel", closeButtonAriaLabel: "Close panel", resizeHandleAriaLabel: "Resize panel" }}>
-                {splitPanel.content}
-              </SplitPanel>
-            ) : undefined
+          onAsk={(question) => assistant?.ask(question)}
+          leading={
+            <button type="button" className="r53-icon-btn r53-q-btn" aria-label="Amazon Q" title="Amazon Q (Ctrl+I)" aria-pressed={qOpen} onClick={() => assistant?.toggle()}>
+              <QLogo size={24} />
+            </button>
           }
-          splitPanelOpen={splitPanelOpen}
-          onSplitPanelToggle={({ detail }) => setSplitPanelOpen(detail.open)}
-          splitPanelPreferences={{ position: "bottom" }}
-          content={<Suspense fallback={<Spinner size="large" />}>{children}</Suspense>}
         />
+        <div className="q-shell">
+          {qOpen && <AssistantPanel width={qWidth} onResize={setQWidth} expanded={qExpanded} onToggleExpand={() => setQExpanded((e) => !e)} />}
+          <div className="q-main" style={qOpen && qExpanded ? { display: "none" } : undefined}>
+            <AppLayoutToolbar
+              headerSelector="#h"
+              footerSelector="#f"
+              contentType={chromeState.chrome.contentType}
+              tools={<HelpPanel />}
+              toolsOpen={help.isOpen}
+              onToolsChange={({ detail }) => help.setOpen(detail.open)}
+              ariaLabels={{
+                navigation: "Route 53 navigation",
+                navigationToggle: "Open navigation",
+                navigationClose: "Close navigation",
+                tools: "Help panel",
+                toolsToggle: "Open help panel",
+                toolsClose: "Close help panel",
+              }}
+              navigationOpen={navOpen}
+              onNavigationChange={({ detail }) => setNavOpen(detail.open)}
+              navigation={<SideNavigation header={{ text: "Route 53", href: "/dashboard" }} activeHref={activeHref(pathname)} items={NAV_ITEMS} onFollow={follow} />}
+              breadcrumbs={<BreadcrumbGroup items={[{ text: "Route 53", href: "/dashboard" }, ...chromeState.chrome.breadcrumbs]} onFollow={follow} ariaLabel="Breadcrumbs" />}
+              notifications={<FlashMessages />}
+              splitPanel={
+                splitPanel ? (
+                  <SplitPanel header={splitPanel.header} hidePreferencesButton closeBehavior="collapse" i18nStrings={{ openButtonAriaLabel: "Open panel", closeButtonAriaLabel: "Close panel", resizeHandleAriaLabel: "Resize panel" }}>
+                    {splitPanel.content}
+                  </SplitPanel>
+                ) : undefined
+              }
+              splitPanelOpen={splitPanelOpen}
+              onSplitPanelToggle={({ detail }) => setSplitPanelOpen(detail.open)}
+              splitPanelPreferences={{ position: "bottom" }}
+              content={<Suspense fallback={<Spinner size="large" />}>{children}</Suspense>}
+            />
+          </div>
+        </div>
         <div id="f" style={{ position: "sticky", bottom: 0, zIndex: 1001 }}>
           {cloudShellOpen && <CloudShell user={user} onClose={() => setCloudShellOpen(false)} />}
           <ConsoleFooter onCloudShell={toggleCloudShell} cloudShellOpen={cloudShellOpen} onUnavailable={setUnavailableService} />

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.errors import ConflictError
 from app.db.session import get_db
-from app.models import ActivityEvent, HealthCheck, HostedZone, Resource, User
+from app.models import ActivityEvent, AssistantConversation, AssistantMessage, HealthCheck, HostedZone, Resource, User
 from app.schemas.common import Message
 from app.seed import populate
 from app.services import activity_service
@@ -43,7 +43,7 @@ def load_sample_data(user: User = Depends(get_current_user), db: Session = Depen
 @router.post("/clear-data", response_model=Message)
 def clear_data(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Delete every zone, record and console resource in this account (the account itself stays)."""
-    for model in (HostedZone, Resource, HealthCheck, ActivityEvent):
+    for model in (AssistantMessage, AssistantConversation, HostedZone, Resource, HealthCheck, ActivityEvent):
         db.execute(delete(model).where(model.owner_id == user.id))
     db.commit()
     activity_service.log(db, user.id, "deleted", "Account data", "All resources removed")

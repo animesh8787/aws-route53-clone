@@ -35,7 +35,8 @@ const config = defineConfig({
       command: `"${python}" -m uvicorn app.main:app --port ${BACKEND_PORT}`,
       cwd: "../backend",
       port: BACKEND_PORT,
-      env: { DATABASE_URL: "sqlite:///./e2e.db", SEED_ON_START: "true", CORS_ORIGINS: `http://127.0.0.1:${FRONTEND_PORT}` },
+      // ASSISTANT_FAKE: Amazon Q answers from the data without a language model, so tests need no API key or network.
+      env: { DATABASE_URL: "sqlite:///./e2e.db", SEED_ON_START: "true", CORS_ORIGINS: `http://127.0.0.1:${FRONTEND_PORT}`, ASSISTANT_FAKE: "true", GROQ_API_KEY: "" },
       reuseExistingServer: false,
       timeout: 60_000,
     },

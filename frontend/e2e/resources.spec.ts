@@ -415,3 +415,36 @@ test("hosted zone tags and DNSSEC tabs", async ({ page }) => {
   await page.goto("/hosted-zones/Z1R8UBAEXAMPLE6PRIV?tab=dnssec");
   await expect(page.getByText(/only available for public hosted zones/)).toBeVisible();
 });
+
+test("Amazon Q: suggestions, streamed answer, search hand-off, diagnose and history", async ({ page }) => {
+  await login(page);
+  await page.getByRole("button", { name: "Amazon Q", exact: true }).click();
+  const panel = page.getByRole("complementary", { name: "Amazon Q" });
+  await expect(panel.getByRole("heading", { name: "How can I help you today?" })).toBeVisible();
+  await panel.getByRole("button", { name: /List my hosted zones/ }).click();
+  await expect(panel.getByRole("log")).toContainText("hosted zone(s)");
+  await expect(panel.getByRole("cell", { name: "acme-corp.io", exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "Helpful", exact: true }).click();
+
+  // a follow-up typed into the prompt
+  await panel.getByRole("textbox", { name: "Ask Amazon Q" }).fill("What is my estimated cost?");
+  await panel.getByRole("button", { name: "Send" }).click();
+  await expect(panel.getByRole("log")).toContainText("estimated monthly Route 53 cost");
+
+  // the console search hands a question over
+  await panel.getByRole("button", { name: "New chat" }).click();
+  await page.getByRole("combobox", { name: "Search" }).fill("how does www.example.com resolve");
+  await page.getByRole("option", { name: /Ask Amazon Q/ }).click();
+  await expect(panel.getByRole("log")).toContainText("returns **NOERROR**".replace(/\*/g, ""));
+
+  // history keeps the conversations
+  await panel.getByRole("button", { name: "Chat history" }).click();
+  await expect(panel.getByRole("button", { name: /List my hosted zones/ })).toBeVisible();
+  await panel.getByRole("button", { name: "Close Amazon Q" }).click();
+  await expect(panel).toHaveCount(0);
+
+  // "Diagnose with Amazon Q" on an error opens the panel with the error as the question
+  await page.goto("/hosted-zones/Z00000000NOTREAL0000");
+  await page.getByRole("button", { name: "Diagnose with Amazon Q" }).click();
+  await expect(page.getByRole("complementary", { name: "Amazon Q" }).getByRole("log")).toContainText("Diagnose this error");
+});

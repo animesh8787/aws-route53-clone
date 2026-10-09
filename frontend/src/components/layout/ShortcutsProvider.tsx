@@ -16,6 +16,7 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: "g then h", action: "Go to Hosted zones" },
   { keys: "?", action: "Show this help" },
   { keys: "Alt+S", action: "Focus the console search" },
+  { keys: "Ctrl+I", action: "Open or close Amazon Q" },
 ];
 
 function isTyping(target: EventTarget | null): boolean {

@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import models  # noqa: F401  (register tables)
-from app.api.routers import account, activity, auth, billing, dns, domains, health_checks, hosted_zones, import_export, records, resolver, resources
+from app.api.routers import account, activity, assistant, auth, billing, dns, domains, health_checks, hosted_zones, import_export, records, resolver, resources
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging
@@ -111,7 +111,7 @@ def create_app() -> FastAPI:
 
     routers = (
         auth.router, hosted_zones.router, records.zone_records, import_export.router, records.records,
-        dns.router, health_checks.router, domains.router, resolver.router, resources.router, activity.router, billing.router, account.router,
+        dns.router, health_checks.router, domains.router, resolver.router, resources.router, activity.router, billing.router, account.router, assistant.router,
     )  # fmt: skip
     for router in routers:
         app.include_router(router, prefix="/api")

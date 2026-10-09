@@ -12,6 +12,7 @@
     "screenshots": "playwright test -c playwright.screenshots.config.ts"
   },
   "dependencies": {
+    "@cloudscape-design/chat-components": "^1.0.178",
     "@cloudscape-design/collection-hooks": "^1.0.110",
     "@cloudscape-design/components": "^3.0.1396",
     "@cloudscape-design/design-tokens": "^3.0.114",
@@ -22,6 +23,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-hook-form": "^7.89.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
