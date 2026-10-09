@@ -83,7 +83,9 @@ export function PolicyDocumentField({ value, onChange, error }: CustomFieldProps
       stretch
     >
       <SpaceBetween size="s">
-        <Textarea value={text} onChange={({ detail }) => onChange(detail.value)} rows={16} spellcheck={false} invalid={!!shown} ariaLabel="Policy document" />
+        <div className="mono-textarea">
+          <Textarea value={text} onChange={({ detail }) => onChange(detail.value)} rows={16} spellcheck={false} invalid={!!shown} ariaLabel="Policy document" />
+        </div>
         <SpaceBetween direction="horizontal" size="xs">
           <Button formAction="none" disabled={!doc} onClick={() => doc && onChange(JSON.stringify(doc, null, 2))}>Format</Button>
           <Button formAction="none" onClick={() => onChange(JSON.stringify(EXAMPLE_POLICY, null, 2))}>Insert example</Button>

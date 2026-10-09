@@ -47,7 +47,9 @@ function DomainsField({ value, onChange, error }: CustomFieldProps) {
       stretch
     >
       <SpaceBetween size="s">
-        <Textarea value={lines.join("\n")} onChange={({ detail }) => onChange(detail.value.split("\n"))} rows={12} spellcheck={false} placeholder={"bad.example.com\n*.tracker.example.net"} invalid={!!error} ariaLabel="Domains" />
+        <div className="mono-textarea">
+          <Textarea value={lines.join("\n")} onChange={({ detail }) => onChange(detail.value.split("\n"))} rows={12} spellcheck={false} placeholder={"bad.example.com\n*.tracker.example.net"} invalid={!!error} ariaLabel="Domains" />
+        </div>
         <div>
           <input ref={fileRef} type="file" accept=".txt,.csv,text/plain" hidden onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ""; }} />
           <Button iconName="upload" formAction="none" onClick={() => fileRef.current?.click()}>Import from file</Button>

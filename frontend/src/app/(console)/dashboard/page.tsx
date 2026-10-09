@@ -61,7 +61,6 @@ export default function DashboardPage() {
               <Metric label="Private" value={data.private_zones} />
               <Metric label="Records" value={data.records} />
               <Metric label="Profiles" value={n("profile")} href="/profiles" />
-              <Metric label="CIDR collections" value={n("cidr_collection")} href="/cidr-collections" />
             </ColumnLayout>
           </Container>
           <Container header={<Header variant="h2" actions={<Button onClick={() => router.push("/traffic-policies")}>View traffic policies</Button>}>Traffic management</Header>}>
