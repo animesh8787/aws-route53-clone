@@ -279,3 +279,73 @@ test("DNS Firewall: domain list, rule group and the simulator blocking a query",
   await expect(page.getByText("Blocked by DNS Firewall rule")).toBeVisible();
   await expect(page.getByText(/BLOCK by rule 'e2e-rule'/)).toBeVisible();
 });
+
+test("top bar: services menu, notifications, activity and help panel", async ({ page }) => {
+  await login(page);
+  await page.getByRole("button", { name: "Services" }).click();
+  await page.getByRole("menuitem", { name: /^S3/ }).click();
+  await expect(page.getByRole("dialog")).toContainText("S3 is not available");
+  await page.getByRole("dialog").getByRole("button", { name: "Close dialog" }).click();
+
+  await page.getByRole("button", { name: /Notifications/ }).click();
+  await expect(page.getByRole("menuitem", { name: /Created hosted zone: example\.com/ })).toBeVisible();
+  await page.getByRole("menuitem", { name: "View all activity" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: /^Activity/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "baseline-firewall" })).toBeVisible();
+
+  // a change made in the console shows up in the feed
+  await page.goto("/hosted-zones/create");
+  await page.getByLabel("Domain name").fill("activity-check.com");
+  await page.getByRole("button", { name: "Create hosted zone" }).last().click();
+  await expect(page.getByText("Hosted zone activity-check.com was successfully created.")).toBeVisible();
+  await page.goto("/activity");
+  await expect(page.getByRole("link", { name: "activity-check.com" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Help", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Route 53 help" })).toBeVisible();
+  await page.goto("/hosted-zones/Z04512872OH7L5Q4YLRPT");
+  await page.getByRole("button", { name: "Info" }).first().click();
+  await expect(page.getByRole("heading", { name: "Hosted zones" }).first()).toBeVisible();
+});
+
+test("billing estimate and Billing menu item", async ({ page }) => {
+  await login(page);
+  await page.getByRole("button", { name: /demo-user/ }).click();
+  await page.getByRole("menuitem", { name: "Billing and Cost Management" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Billing and Cost Management" })).toBeVisible();
+  await expect(page.getByText("Estimate, not a bill")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Cost breakdown/ })).toBeVisible();
+  await expect(page.getByText("Route 53 hosted zones").first()).toBeVisible();
+  await expect(page.getByText("Traffic policy records")).toBeVisible();
+});
+
+test("hosted zone tags and DNSSEC tabs", async ({ page }) => {
+  await login(page);
+  await page.goto("/hosted-zones/Z04512872OH7L5Q4YLRPT?tab=tags");
+  await expect(page.getByRole("cell", { name: "Environment" })).toBeVisible();
+  await page.getByRole("button", { name: "Manage tags" }).click();
+  await page.getByRole("button", { name: "Add tag" }).click();
+  await page.getByPlaceholder("Environment").last().fill("aws:reserved");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText(/keys starting with 'aws:' are reserved/)).toBeVisible();
+  await page.getByPlaceholder("Environment").last().fill("e2e-tag");
+  await page.getByPlaceholder("production").last().fill("1");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText(/Tags updated for example\.com/)).toBeVisible();
+  await expect(page.getByRole("cell", { name: "e2e-tag" })).toBeVisible();
+
+  // DNSSEC: seeded as signing on mycompany.dev
+  await page.goto("/hosted-zones/Z0891234KX2QWERT7HGFD?tab=dnssec");
+  await expect(page.getByText("Signing", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^\d+ 13 2 [0-9A-F]{64}$/)).toBeVisible();
+  await page.getByRole("button", { name: "Disable DNSSEC signing" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Disable" }).click();
+  await expect(page.getByText(/DNSSEC signing was disabled for mycompany\.dev/)).toBeVisible();
+  await page.getByRole("button", { name: "Enable DNSSEC signing" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Enable", exact: true }).click();
+  await expect(page.getByText(/DNSSEC signing was enabled for mycompany\.dev/)).toBeVisible();
+
+  // private zones cannot be signed
+  await page.goto("/hosted-zones/Z1R8UBAEXAMPLE6PRIV?tab=dnssec");
+  await expect(page.getByText(/only available for public hosted zones/)).toBeVisible();
+});

@@ -15,6 +15,10 @@ import { FlashMessages } from "@/components/layout/FlashProvider";
 import { NAV_ITEMS } from "@/components/layout/nav-items";
 import { ShortcutsProvider } from "@/components/layout/ShortcutsProvider";
 import { useTheme } from "@/components/layout/ThemeProvider";
+import Box from "@cloudscape-design/components/box";
+import Modal from "@cloudscape-design/components/modal";
+import { SERVICE_MENU_ITEMS, nameFromServiceId } from "@/components/layout/services-catalog";
+import { timeAgo, useActivitySummary, useMarkActivityRead } from "@/features/activity/hooks";
 import { useCurrentUser, useLogout } from "@/features/auth/hooks";
 import { AWS_LOGO_WHITE } from "@/lib/aws-logo";
 
@@ -40,6 +44,9 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
   const { mode, toggle } = useTheme();
   const chromeState = useChromeState();
   const [navOpen, setNavOpen] = useState(true);
+  const [unavailableService, setUnavailableService] = useState<string | null>(null);
+  const activity = useActivitySummary(!!user);
+  const markRead = useMarkActivityRead();
 
   if (isPending || !user) {
     return (
@@ -68,14 +75,50 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
             identity={{ href: "/dashboard", logo: { src: AWS_LOGO_WHITE, alt: "AWS" }, onFollow: (e) => { e.preventDefault(); router.push("/dashboard"); } }}
             i18nStrings={{ overflowMenuTriggerText: "More", overflowMenuTitleText: "All", overflowMenuBackIconAriaLabel: "Back", overflowMenuDismissIconAriaLabel: "Close menu" }}
             utilities={[
-              { type: "button", text: "Services", iconName: "view-full", ariaLabel: "Services", onClick: () => router.push("/dashboard") },
-              { type: "button", iconName: "notification", ariaLabel: "Notifications", title: "Notifications" },
+              {
+                type: "menu-dropdown",
+                text: "Services",
+                iconName: "view-full",
+                ariaLabel: "Services",
+                items: SERVICE_MENU_ITEMS,
+                onItemClick: ({ detail }) => {
+                  const name = nameFromServiceId(detail.id);
+                  if (name === "Route 53") router.push("/dashboard");
+                  else if (name) setUnavailableService(name);
+                },
+              },
+              {
+                type: "menu-dropdown",
+                iconName: "notification",
+                ariaLabel: `Notifications${activity.data?.unread ? ` (${activity.data.unread} unread)` : ""}`,
+                title: "Notifications",
+                badge: !!activity.data?.unread,
+                items: [
+                  ...((activity.data?.items.length ?? 0) > 0
+                    ? (activity.data?.items ?? []).map((e) => ({
+                        id: `event:${e.id}:${e.href ?? ""}`,
+                        text: `${e.is_read ? "" : "● "}${e.action.charAt(0).toUpperCase() + e.action.slice(1)} ${e.resource_type.toLowerCase()}: ${e.name}`,
+                        description: `${timeAgo(e.created_at)}${e.detail ? ` · ${e.detail}` : ""}`,
+                      }))
+                    : [{ id: "none", text: "No notifications yet", disabled: true }]),
+                  { id: "read", text: "Mark all as read", disabled: !activity.data?.unread },
+                  { id: "all", text: "View all activity" },
+                ],
+                onItemClick: ({ detail }) => {
+                  if (detail.id === "read") markRead.mutate();
+                  else if (detail.id === "all") router.push("/activity");
+                  else if (detail.id.startsWith("event:")) {
+                    const href = detail.id.split(":").slice(2).join(":");
+                    if (href) router.push(href);
+                  }
+                },
+              },
               { type: "button", iconName: "status-info", ariaLabel: "Help", title: "Help", onClick: () => help.open() },
               {
                 type: "menu-dropdown",
                 text: "Global",
                 description: "Route 53 is a global service",
-                items: [{ id: "global", text: "Global", description: "Route 53 is a global service" }],
+                items: [{ id: "global", text: "Global", description: "Route 53 is a global service: no Region needs to be chosen" }],
               },
               {
                 type: "menu-dropdown",
@@ -92,6 +135,9 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
                 onItemClick: ({ detail }) => {
                   if (detail.id === "signout") void signOut();
                   if (detail.id === "theme") toggle();
+                  if (detail.id === "account") router.push("/account");
+                  if (detail.id === "billing") router.push("/billing");
+                  if (detail.id === "credentials") router.push("/security-credentials");
                 },
               },
             ]}
@@ -124,6 +170,9 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
           notifications={<FlashMessages />}
           content={<Suspense fallback={<Spinner size="large" />}>{children}</Suspense>}
         />
+        <Modal visible={!!unavailableService} onDismiss={() => setUnavailableService(null)} header={unavailableService ?? ""} closeAriaLabel="Close dialog">
+          <Box>{unavailableService} is not available in this Route 53 console clone. Only Route 53 is implemented.</Box>
+        </Modal>
       </ShortcutsProvider>
     </ChromeContext.Provider>
   );

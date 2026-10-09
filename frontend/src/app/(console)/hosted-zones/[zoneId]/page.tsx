@@ -15,10 +15,13 @@ import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 
 import { usePageChrome } from "@/components/layout/ChromeContext";
+import { useHelp } from "@/components/layout/HelpContext";
 import { ErrorState } from "@/components/states/States";
 import { DeleteZoneModal } from "@/features/hosted-zones/DeleteZoneModal";
 import { EditZoneModal } from "@/features/hosted-zones/EditZoneModal";
 import { useHostedZone } from "@/features/hosted-zones/hooks";
+import { ZoneDnssecTab } from "@/features/hosted-zones/ZoneDnssecTab";
+import { ZoneTagsTab } from "@/features/hosted-zones/ZoneTagsTab";
 import { RecordsTable } from "@/features/records/RecordsTable";
 import { useUrlParams } from "@/hooks/useUrlParams";
 
@@ -36,6 +39,7 @@ const formatDate = (iso: string) => new Date(iso.endsWith("Z") ? iso : `${iso}Z`
 export default function HostedZoneDetailPage({ params }: { params: Promise<{ zoneId: string }> }) {
   const { zoneId } = use(params);
   const router = useRouter();
+  const help = useHelp();
   const { params: query, update } = useUrlParams();
   const { data: zone, error, refetch } = useHostedZone(zoneId);
   const [editing, setEditing] = useState(false);
@@ -55,7 +59,7 @@ export default function HostedZoneDetailPage({ params }: { params: Promise<{ zon
     <SpaceBetween size="l">
       <Header
         variant="h1"
-        info={<Link variant="info">Info</Link>}
+        info={<Link variant="info" onFollow={() => help.open("hosted-zones")}>Info</Link>}
         actions={
           <SpaceBetween direction="horizontal" size="xs">
             <Button onClick={() => setDeleting(true)}>Delete zone</Button>
@@ -104,16 +108,8 @@ export default function HostedZoneDetailPage({ params }: { params: Promise<{ zon
           onChange={({ detail }) => update({ tab: detail.activeTabId === "records" ? null : detail.activeTabId })}
           tabs={[
             { id: "records", label: `Records (${zone.record_count})`, content: <RecordsTable zone={zone} /> },
-            {
-              id: "dnssec",
-              label: "DNSSEC signing",
-              content: (
-                <Box padding="l" color="text-body-secondary">
-                  DNSSEC signing is not available in this clone. It would be configured here in the AWS console.
-                </Box>
-              ),
-            },
-            { id: "tags", label: "Hosted zone tags", content: <Box padding="l" color="text-body-secondary">No tags are associated with this hosted zone.</Box> },
+            { id: "dnssec", label: "DNSSEC signing", content: <ZoneDnssecTab zone={zone} /> },
+            { id: "tags", label: `Hosted zone tags (${zone.tags?.length ?? 0})`, content: <ZoneTagsTab zone={zone} /> },
           ]}
         />
       </Container>

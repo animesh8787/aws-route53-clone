@@ -1,3 +1,4 @@
+import { activityConfig } from "@/features/activity/config";
 import { cidrCollectionConfig } from "@/features/cidr-collections/config";
 import { domainConfig, domainRequestConfig } from "@/features/domains/config";
 import { domainListConfig, ruleGroupConfig } from "@/features/firewall/config";
@@ -13,6 +14,7 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = Object.fromEntri
   [
     healthCheckConfig, profileConfig, cidrCollectionConfig, trafficPolicyConfig, policyRecordConfig, domainConfig, domainRequestConfig,
     resolverVpcConfig, inboundEndpointConfig, outboundEndpointConfig, resolverRuleConfig, queryLoggingConfig, domainListConfig, ruleGroupConfig,
+    activityConfig,
   ].map((c) => [c.route, c]),
 );
 

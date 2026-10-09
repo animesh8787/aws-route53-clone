@@ -12,6 +12,12 @@ def record(db: Session, owner_id: int, action: str, resource_type: str, resource
     db.add(ActivityEvent(owner_id=owner_id, action=action, resource_type=resource_type, resource_name=resource_name[:255], href=href, detail=detail[:255]))
 
 
+def log(db: Session, owner_id: int, action: str, resource_type: str, resource_name: str, *, href: str | None = None, detail: str = "") -> None:
+    """Record an event and commit it (for callers that have already committed their own change)."""
+    record(db, owner_id, action, resource_type, resource_name, href=href, detail=detail)
+    db.commit()
+
+
 def recent(db: Session, owner_id: int, limit: int = 20) -> list[ActivityEvent]:
     query = select(ActivityEvent).where(ActivityEvent.owner_id == owner_id).order_by(ActivityEvent.id.desc()).limit(limit)
     return list(db.scalars(query))

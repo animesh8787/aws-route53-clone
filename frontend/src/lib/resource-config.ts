@@ -102,6 +102,8 @@ export interface ResourceConfig {
   /** Hide only the delete button (the resource cannot be deleted). */
   noDelete?: boolean;
   createLabel?: string;
+  /** Where a row links to; defaults to the detail page. Return null for rows that link nowhere. */
+  rowHref?: (item: ResourceItem) => string | null;
   /** Lets one config use a bespoke create page route (e.g. domain registration). */
   createHref?: string;
 }

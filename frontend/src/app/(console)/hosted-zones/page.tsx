@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { usePageChrome } from "@/components/layout/ChromeContext";
+import { useHelp } from "@/components/layout/HelpContext";
 import { EmptyState, ErrorState } from "@/components/states/States";
 import { DeleteZoneModal } from "@/features/hosted-zones/DeleteZoneModal";
 import { EditZoneModal } from "@/features/hosted-zones/EditZoneModal";
@@ -30,6 +31,7 @@ const TYPE_OPTIONS = [
 export default function HostedZonesPage() {
   const router = useRouter();
   usePageChrome([{ text: "Hosted zones", href: "/hosted-zones" }], "table");
+  const help = useHelp();
   const { params, update, getInt } = useUrlParams();
 
   const q = params.get("q") ?? "";
@@ -98,7 +100,7 @@ export default function HostedZonesPage() {
             <Header
               variant="awsui-h1-sticky"
               counter={data ? `(${data.total})` : undefined}
-              info={<Link variant="info">Info</Link>}
+              info={<Link variant="info" onFollow={() => help.open("hosted-zones")}>Info</Link>}
               description="Hosted zones contain the DNS records that route traffic for a domain."
               actions={
                 <SpaceBetween direction="horizontal" size="xs">

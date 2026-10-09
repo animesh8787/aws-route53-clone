@@ -50,7 +50,7 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
   const [visible, setVisible] = useState(() => config.columns.filter((c) => !c.hidden).map((c) => c.id));
   const current = selected[0] ? (data?.items.find((i) => idOf(config, i) === idOf(config, selected[0])) ?? selected[0]) : undefined;
   const filtered = !!(q || Object.keys(activeFilters).length);
-  const detailHref = (item: ResourceItem) => `/${config.route}/${idOf(config, item)}`;
+  const detailHref = (item: ResourceItem) => config.rowHref?.(item) ?? `/${config.route}/${idOf(config, item)}`;
   const createHref = config.createHref ?? `/${config.route}/create`;
 
   const columns: TableProps.ColumnDefinition<ResourceItem>[] = config.columns.map((c, index) => ({

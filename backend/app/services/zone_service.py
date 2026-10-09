@@ -50,6 +50,8 @@ def to_out(zone: HostedZone) -> HostedZoneOut:
         updated_at=zone.updated_at,
         name_servers=name_servers(zone.zone_id),
         vpcs=[VpcOut(vpc_id=x.vpc_id, region=x.region) for x in zone.vpcs],
+        tags=list(zone.tags or []),
+        dnssec_status="SIGNING" if zone.dnssec else "NOT_SIGNING",
     )
 
 

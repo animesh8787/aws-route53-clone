@@ -36,3 +36,5 @@ class HostedZoneOut(BaseModel):
     updated_at: datetime
     name_servers: list[str]
     vpcs: list[VpcOut]
+    tags: list[dict[str, str]] = []
+    dnssec_status: str = "NOT_SIGNING"

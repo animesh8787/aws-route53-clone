@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.session import Base, SessionLocal, engine
-from app.models import DnsRecord, HealthCheck, HostedZone, Resource, User, VpcAssociation
+from app.models import ActivityEvent, DnsRecord, HealthCheck, HostedZone, Resource, User, VpcAssociation
 from app.schemas.hosted_zone import HostedZoneCreate, VpcIn
 from app.schemas.record import AliasIn, RecordIn
-from app.services import record_service, zone_service
+from app.services import record_service, zone_extras, zone_service
 from app.services.resources import service as resource_service
 from app.services.resources.registry import get_kind
 
@@ -187,6 +187,9 @@ def _seed_console_resources(db: Session, owner_id: int) -> None:
     expiring = resource_service.create(db, owner_id, kind("domain"), {"name": "acme-corp.io", "years": 1, "auto_renew": False, "transfer_lock": False, "contact": contact})
     expiring.data = {**expiring.data, "expires_at": (datetime.utcnow() + timedelta(days=25)).isoformat(timespec="seconds")}
     db.commit()
+    zone_extras.set_tags(db, example, [zone_extras.Tag(key="Environment", value="production"), zone_extras.Tag(key="Team", value="platform"), zone_extras.Tag(key="CostCenter", value="CC-1042")])
+    mycompany = db.scalar(select(HostedZone).where(HostedZone.name == "mycompany.dev"))
+    zone_extras.enable_dnssec(db, mycompany, zone_extras.DnssecEnable(ksk_name="mycompany_ksk"))
     prod = "vpc-0a1b2c3d4e5f60789"
     ips = lambda a, b: [{"subnet_id": "subnet-0a1b2c3d4e", "ip": a}, {"subnet_id": "subnet-0b2c3d4e5f", "ip": b}]  # noqa: E731
     resource_service.create(
@@ -230,6 +233,22 @@ _COPY_ORDER = (HealthCheck, HostedZone, VpcAssociation, DnsRecord, Resource)
 _CHUNK = 100
 
 
+def _seed_activity(db: Session, owner_id: int) -> None:
+    """A few past events so the notifications list is not empty on a fresh deployment."""
+    now = datetime.utcnow()
+    events = [
+        (2, "created", "Hosted zone", "example.com", "/hosted-zones/Z04512872OH7L5Q4YLRPT", ""),
+        (5, "created", "Domain", "mycompany.dev", "/registered-domains", ""),
+        (9, "updated", "Health check", "api-eu", "/health-checks", "Status is now unhealthy"),
+        (30, "created", "Traffic policy", "web-failover", "/traffic-policies", ""),
+        (55, "imported", "Zone file", "12 record(s) into shop.example.com", "/hosted-zones", ""),
+        (180, "created", "Rule group", "baseline-firewall", "/dns-firewall", ""),
+    ]
+    for minutes, action, kind, name, href, detail in events:
+        db.add(ActivityEvent(owner_id=owner_id, action=action, resource_type=kind, resource_name=name, href=href, detail=detail, is_read=minutes > 40, created_at=now - timedelta(minutes=minutes)))
+    db.commit()
+
+
 def seed_all(db: Session) -> None:
     """Seed demo data once.
 
@@ -255,6 +274,7 @@ def seed_all(db: Session) -> None:
         for start in range(0, len(rows[model]), _CHUNK):
             db.execute(insert(model.__table__).values(rows[model][start : start + _CHUNK]))
     db.commit()
+    _seed_activity(db, demo.id)
     logger.info("Seeded demo data.")
 
 

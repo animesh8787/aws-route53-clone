@@ -35,6 +35,8 @@ export interface HostedZone {
   updated_at: string;
   name_servers: string[];
   vpcs: Vpc[];
+  tags: { key: string; value: string }[];
+  dnssec_status: "SIGNING" | "NOT_SIGNING";
 }
 
 export interface HostedZoneInput {
