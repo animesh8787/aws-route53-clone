@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 
 import { DeleteResourceModal } from "@/components/resource/DeleteResourceModal";
 import { usePageChrome } from "@/components/layout/ChromeContext";
+import { usePageSplitPanel } from "@/components/layout/SplitPanelContext";
 import { useHelp } from "@/components/layout/HelpContext";
 import { EmptyState, ErrorState } from "@/components/states/States";
 import { useResourceList } from "@/features/resources/api";
@@ -53,13 +54,19 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
   const detailHref = (item: ResourceItem) => config.rowHref?.(item) ?? `/${config.route}/${idOf(config, item)}`;
   const createHref = config.createHref ?? `/${config.route}/create`;
 
+  const split = config.splitPanel;
+  usePageSplitPanel(
+    split ? (current ? { header: current.name, content: split.render(current) } : { header: split.emptyHeader, content: split.emptyText }) : null,
+    split ? (current ? `${idOf(config, current)}:${String(current.status)}:${String(current.updated_at ?? "")}` : "empty") : "none",
+  );
+
   const columns: TableProps.ColumnDefinition<ResourceItem>[] = config.columns.map((c, index) => ({
     id: c.id,
     header: c.header,
     sortingField: c.sortKey,
     isRowHeader: index === 0,
     cell:
-      index === 0
+      index === 0 || c.link
         ? (item) => (
             <Link href={detailHref(item)} onFollow={(e) => { e.preventDefault(); router.push(detailHref(item)); }}>
               {c.cell(item)}
@@ -181,8 +188,9 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
 
   return (
     <>
-      {config.intro ? (
+      {config.intro || config.notice ? (
         <SpaceBetween size="l">
+          {config.notice}
           {config.intro}
           {table}
         </SpaceBetween>

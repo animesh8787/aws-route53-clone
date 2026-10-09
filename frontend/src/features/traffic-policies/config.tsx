@@ -70,11 +70,12 @@ export const trafficPolicyConfig: ResourceConfig = {
   searchPlaceholder: "Filter policies by name or ID",
   filters: [{ key: "record_type", label: "DNS types", options: TYPES }],
   columns: [
-    { id: "name", header: "Policy name", sortKey: "name", cell: (i) => i.name },
-    { id: "id", header: "Policy ID", cell: (i) => String(i.id) },
-    { id: "type", header: "DNS type", sortKey: "record_type", cell: (i) => String(i.record_type) },
-    { id: "version", header: "Latest version", cell: (i) => String(i.latest_version) },
-    { id: "records", header: "Policy records", cell: (i) => String(i.policy_record_count) },
+    { id: "name", header: "Name", sortKey: "name", cell: (i) => i.name },
+    { id: "versions", header: "Number of versions", cell: (i) => String(versionsOf(i).length || i.latest_version) },
+    { id: "id", header: "Policy ID", hidden: true, cell: (i) => String(i.id) },
+    { id: "type", header: "DNS type", sortKey: "record_type", hidden: true, cell: (i) => String(i.record_type) },
+    { id: "version", header: "Latest version", hidden: true, cell: (i) => String(i.latest_version) },
+    { id: "records", header: "Policy records", hidden: true, cell: (i) => String(i.policy_record_count) },
     { id: "description", header: "Description", hidden: true, cell: (i) => String(i.description || "-") },
   ],
   fields: [

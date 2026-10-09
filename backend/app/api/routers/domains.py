@@ -34,3 +34,15 @@ def request_transfer_out(domain_id: str, user: User = Depends(get_current_user),
     kind = get_kind("domain")
     domain = resource_service.get_owned(db, user.id, kind, domain_id)
     return {"auth_code": domain_service.transfer_out(db, user.id, domain)}
+
+
+class TransferInRequest(BaseModel):
+    name: str
+    auth_code: str
+
+
+@router.post("/transfer-in", status_code=201)
+def transfer_in(body: TransferInRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Simulated transfer of a domain from another registrar."""
+    request = domain_service.transfer_in(db, user.id, body.name, body.auth_code)
+    return resource_service.to_out(request, db)

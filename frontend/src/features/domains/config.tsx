@@ -14,6 +14,7 @@ import NextLink from "next/link";
 import { useState } from "react";
 
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { DownloadBillingReport, PremiumDomainsBanner, TransferInButton } from "@/features/domains/DomainExtras";
 import { useFlash } from "@/components/layout/FlashProvider";
 import { ApiError, api } from "@/lib/api";
 import { validateHostname, validateInt } from "@/lib/dns-validation";
@@ -127,16 +128,23 @@ export const domainConfig: ResourceConfig = {
     ],
   },
   searchPlaceholder: "Filter domains by name",
-  createLabel: "Register domain",
+  createLabel: "Register domains",
   createHref: "/registered-domains/register",
   noDelete: true,
+  notice: <PremiumDomainsBanner />,
+  headerActions: ({ refresh }) => (
+    <>
+      <DownloadBillingReport />
+      <TransferInButton onDone={refresh} />
+    </>
+  ),
   columns: [
     { id: "name", header: "Domain name", sortKey: "name", cell: (i) => i.name },
-    { id: "status", header: "Status", sortKey: "status", cell: (i) => <StatusBadge status={i.status} /> },
     { id: "expires", header: "Expiration date", sortKey: "expires_at", cell: (i) => <ExpiryCell item={i} /> },
     { id: "autorenew", header: "Auto-renew", cell: (i) => yesNo(i.auto_renew) },
     { id: "lock", header: "Transfer lock", cell: (i) => yesNo(i.transfer_lock) },
-    { id: "zone", header: "Hosted zone", cell: (i) => (i.zone_id ? <Link href={`/hosted-zones/${i.zone_id}`}>{String(i.zone_name ?? i.zone_id)}</Link> : "-") },
+    { id: "status", header: "Status", sortKey: "status", hidden: true, cell: (i) => <StatusBadge status={i.status} /> },
+    { id: "zone", header: "Hosted zone", hidden: true, cell: (i) => (i.zone_id ? <Link href={`/hosted-zones/${i.zone_id}`}>{String(i.zone_name ?? i.zone_id)}</Link> : "-") },
     { id: "registered", header: "Registered", hidden: true, cell: (i) => date(i.registered_at) },
   ],
   fields: [
@@ -223,7 +231,7 @@ function DomainRequests({ name }: { name: string }) {
   );
 }
 
-const REQUEST_TYPES = ["REGISTER_DOMAIN", "RENEW_DOMAIN", "TRANSFER_OUT", "UPDATE_DOMAIN"].map((t) => ({ value: t, label: t.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) }));
+const REQUEST_TYPES = ["REGISTER_DOMAIN", "RENEW_DOMAIN", "TRANSFER_IN_DOMAIN", "TRANSFER_OUT", "UPDATE_DOMAIN"].map((t) => ({ value: t, label: t.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) }));
 
 export const domainRequestConfig: ResourceConfig = {
   route: "domain-requests",
@@ -242,12 +250,13 @@ export const domainRequestConfig: ResourceConfig = {
     { key: "request_type", label: "request types", options: REQUEST_TYPES },
   ],
   columns: [
-    { id: "id", header: "Request ID", cell: (i) => String(i.id) },
-    { id: "type", header: "Type", sortKey: "request_type", cell: (i) => REQUEST_TYPES.find((t) => t.value === i.request_type)?.label ?? String(i.request_type) },
-    { id: "domain", header: "Domain", cell: (i) => String(i.domain_name) },
+    { id: "id", header: "Operation ID", cell: (i) => String(i.id) },
+    { id: "domain", header: "Domain name", cell: (i) => String(i.domain_name) },
+    { id: "message", header: "Message", cell: (i) => String(i.detail || "-") },
     { id: "status", header: "Status", sortKey: "status", cell: (i) => <StatusBadge status={i.status} /> },
-    { id: "submitted", header: "Submitted (UTC)", sortKey: "created_at", cell: (i) => String(i.submitted_at).replace("T", " ") },
-    { id: "price", header: "Price", cell: (i) => (i.price ? `$${Number(i.price).toFixed(2)}` : "-") },
+    { id: "type", header: "Type", sortKey: "request_type", cell: (i) => REQUEST_TYPES.find((t) => t.value === i.request_type)?.label ?? String(i.request_type) },
+    { id: "submitted", header: "Submitted", sortKey: "created_at", cell: (i) => String(i.submitted_at).replace("T", " ") },
+    { id: "price", header: "Price", hidden: true, cell: (i) => (i.price ? `$${Number(i.price).toFixed(2)}` : "-") },
   ],
   fields: [],
   detailRows: [

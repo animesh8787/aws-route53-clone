@@ -93,12 +93,15 @@ def add_request(db: Session, owner_id: int, request_type: str, domain_name: str,
 
 
 def settle_requests(db: Session, owner_id: int) -> None:
-    """Requests complete a few seconds after submission (no background worker needed)."""
+    """Requests complete a few seconds after submission (no background worker needed).
+
+    Transfers in wait for the current registrar's approval (days in reality), so they stay in progress.
+    """
     cutoff = (datetime.utcnow() - timedelta(seconds=REQUEST_SETTLE_SECONDS)).isoformat(timespec="seconds")
     pending = db.scalars(select(Resource).where(Resource.owner_id == owner_id, Resource.kind == "domain_request", Resource.status == "IN_PROGRESS"))
     changed = False
     for request in pending:
-        if request.data.get("submitted_at", "") <= cutoff:
+        if request.data.get("request_type") != "TRANSFER_IN_DOMAIN" and request.data.get("submitted_at", "") <= cutoff:
             request.status = "SUCCESSFUL"
             changed = True
     if changed:
@@ -140,3 +143,32 @@ def transfer_out(db: Session, owner_id: int, domain: Resource) -> str:
     add_request(db, owner_id, "TRANSFER_OUT", domain.name, "Authorization code generated")
     db.commit()
     return code
+
+
+AUTH_CODE_RE = re.compile(r"^[\x21-\x7e]{6,64}$")
+
+
+def transfer_in(db: Session, owner_id: int, name: str, auth_code: str) -> Resource:
+    """Simulated transfer from another registrar: validated and recorded as a request (the losing registrar must approve it)."""
+    text = name.strip().lower().rstrip(".")
+    errors = []
+    try:
+        _, tld = _split(text)
+        if "." not in text:
+            errors.append(field_error("name", "Enter the full domain name, for example example.com."))
+        elif price_for(tld) is None:
+            errors.append(field_error("name", f".{tld} domains cannot be transferred to this registrar."))
+    except v.DnsValueError as exc:
+        errors.append(field_error("name", str(exc)))
+    if not AUTH_CODE_RE.match(auth_code.strip()):
+        errors.append(field_error("auth_code", "Enter the authorization code from your current registrar (6-64 characters, no spaces)."))
+    if errors:
+        raise ValidationFailure(errors[0]["message"], errors)
+    if db.scalar(select(Resource).where(Resource.owner_id == owner_id, Resource.kind == "domain", Resource.name == text)) is not None:
+        raise ConflictError(f"{text} is already registered in your account.")
+    if not _taken(text):
+        msg = f"{text} is not registered with another registrar, so it cannot be transferred. Register it instead."
+        raise ValidationFailure(msg, [field_error("name", msg)])
+    request = add_request(db, owner_id, "TRANSFER_IN_DOMAIN", text, "Transfer requested; waiting for the current registrar to approve", price_for(tld))
+    db.commit()
+    return request

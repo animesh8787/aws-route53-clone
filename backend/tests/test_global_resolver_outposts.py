@@ -71,3 +71,32 @@ def test_feedback_is_kept_in_the_activity_log(client):
     assert client.post("/api/activity/feedback", json={"message": ""}).status_code == 422
     feed = client.get("/api/activity", params={"filter_resource_type": "Feedback"}).json()
     assert feed["total"] == 1 and feed["items"][0]["name"] == "Great console"
+
+
+def test_transfer_in_is_validated_and_stays_in_progress(client):
+    from app.services.domain_service import _taken
+
+    taken = next(f"brand{i}.com" for i in range(200) if _taken(f"brand{i}.com"))
+    free = next(f"brand{i}.com" for i in range(200) if not _taken(f"brand{i}.com"))
+    bad = client.post("/api/domains/transfer-in", json={"name": "brand", "auth_code": "x"})
+    assert bad.status_code == 422 and {e["field"] for e in bad.json()["errors"]} == {"name", "auth_code"}
+    assert client.post("/api/domains/transfer-in", json={"name": "brand.zzz", "auth_code": "Ab12-cd34"}).status_code == 422
+    not_registered = client.post("/api/domains/transfer-in", json={"name": free, "auth_code": "Ab12-cd34"})
+    assert not_registered.status_code == 422 and "not registered" in not_registered.json()["detail"]
+
+    ok = client.post("/api/domains/transfer-in", json={"name": taken, "auth_code": "Ab12-cd34"})
+    assert ok.status_code == 201, ok.text
+    assert ok.json()["request_type"] == "TRANSFER_IN_DOMAIN" and ok.json()["status"] == "IN_PROGRESS" and ok.json()["price"] == 14.0
+    requests = client.get("/api/resources/domain_request", params={"filter_request_type": "TRANSFER_IN_DOMAIN"}).json()
+    assert requests["total"] == 1 and requests["items"][0]["status"] == "IN_PROGRESS"
+
+
+def test_resources_carry_arn_and_owner_account(client):
+    me = client.get("/api/auth/me").json()
+    profile = client.post("/api/resources/profile", json={"name": "arn-check"}).json()
+    assert profile["owner_account_id"] == me["account_id"]
+    assert profile["arn"] == f"arn:aws:route53profiles:us-east-1:{me['account_id']}:profile/{profile['id']}"
+    listed = client.get("/api/resources/profile").json()["items"][0]
+    assert listed["arn"] == profile["arn"]
+    gr = client.post("/api/resources/global_resolver", json=GR).json()
+    assert gr["arn"].startswith("arn:aws:route53globalresolver::")  # a kind's own ARN is kept

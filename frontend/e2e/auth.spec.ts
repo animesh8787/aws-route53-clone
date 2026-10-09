@@ -11,7 +11,7 @@ async function signUp(page: Page, email: string, name = "E2E User") {
   await passwords.nth(0).fill(PASSWORD);
   await passwords.nth(1).fill(PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("heading", { name: "Route 53 dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Amazon Route 53" })).toBeVisible();
 }
 
 async function signOut(page: Page, name: string) {
@@ -57,7 +57,7 @@ test("sign up validates the password, starts empty, and can load sample data", a
   await page.getByRole("button", { name: "Load sample data" }).click();
   await expect(page.getByText("Sample data was loaded.")).toBeVisible();
   await expect(page.getByRole("heading", { name: /Hosted zones.*22/ })).toBeVisible();
-  await page.getByPlaceholder(/Filter hosted zones/).fill("example.com");
+  await page.getByLabel("Filter hosted zones").fill("example.com");
   await expect(page.getByRole("link", { name: "example.com", exact: true })).toBeVisible();
 
   await page.goto("/account");
@@ -75,7 +75,7 @@ test("password change signs out other sessions and the new password works", asyn
   // a second browser session for the same account
   const other = await browser.newPage();
   await signIn(other, email, PASSWORD);
-  await expect(other.getByRole("heading", { name: "Route 53 dashboard" })).toBeVisible();
+  await expect(other.getByRole("heading", { level: 1, name: "Amazon Route 53" })).toBeVisible();
 
   await page.goto("/security-credentials");
   await expect(page.getByText("This session")).toBeVisible();
@@ -100,7 +100,7 @@ test("password change signs out other sessions and the new password works", asyn
   await signIn(page, email, PASSWORD);
   await expect(page.getByText("Incorrect email or password.")).toBeVisible();
   await signIn(page, email, "Brand-new-pass-77");
-  await expect(page.getByRole("heading", { name: "Route 53 dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Amazon Route 53" })).toBeVisible();
 });
 
 test("repeated failed sign-ins lock the account", async ({ page }) => {
@@ -121,7 +121,7 @@ test("a signed-in user can end other sessions and the profile can be renamed", a
   await signUp(page, email, "Original Name");
   const other = await browser.newPage();
   await signIn(other, email, PASSWORD);
-  await expect(other.getByRole("heading", { name: "Route 53 dashboard" })).toBeVisible();
+  await expect(other.getByRole("heading", { level: 1, name: "Amazon Route 53" })).toBeVisible();
 
   await page.goto("/security-credentials");
   await page.getByRole("button", { name: "Sign out all other sessions" }).click();

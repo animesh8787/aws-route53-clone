@@ -140,10 +140,15 @@ inbound = register(
         default_status="OPERATIONAL", validate=_validate_endpoint("INBOUND"), sort_keys=("vpc_id",),
     )
 )
+def _present_outbound(db: Session, resource: Resource, _flat: dict) -> dict:
+    rules = db.scalars(select(Resource).where(Resource.owner_id == resource.owner_id, Resource.kind == "resolver_rule"))
+    return {"rule_count": sum(1 for r in rules if r.data.get("outbound_endpoint_id") == resource.public_id)}
+
+
 outbound = register(
     ResourceKind(
         kind="resolver_outbound", label="Outbound endpoint", id_prefix="rslvr-out", href="/resolver-outbound", payload=EndpointPayload,
-        default_status="OPERATIONAL", validate=_validate_endpoint("OUTBOUND"), guard_delete=_guard_endpoint_delete, sort_keys=("vpc_id",),
+        default_status="OPERATIONAL", validate=_validate_endpoint("OUTBOUND"), guard_delete=_guard_endpoint_delete, sort_keys=("vpc_id",), present=_present_outbound,
     )
 )
 

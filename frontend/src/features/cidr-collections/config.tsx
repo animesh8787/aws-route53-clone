@@ -77,12 +77,13 @@ export const cidrCollectionConfig: ResourceConfig = {
   },
   searchPlaceholder: "Filter collections by name, ID or CIDR block",
   columns: [
-    { id: "name", header: "Name", sortKey: "name", cell: (i) => i.name },
-    { id: "id", header: "Collection ID", cell: (i) => String(i.id) },
-    { id: "status", header: "Status", cell: (i) => <StatusBadge status={i.status} /> },
-    { id: "locations", header: "Locations", cell: (i) => String(i.location_count) },
-    { id: "cidrs", header: "CIDR blocks", cell: (i) => String(i.cidr_count) },
-    { id: "records", header: "Used by records", cell: (i) => String(i.record_count) },
+    { id: "name", header: "Collection name", sortKey: "name", cell: (i) => i.name },
+    { id: "arn", header: "ARN", cell: (i) => String(i.arn ?? "-") },
+    { id: "id", header: "Collection ID", hidden: true, cell: (i) => String(i.id) },
+    { id: "status", header: "Status", hidden: true, cell: (i) => <StatusBadge status={i.status} /> },
+    { id: "locations", header: "Locations", hidden: true, cell: (i) => String(i.location_count) },
+    { id: "cidrs", header: "CIDR blocks", hidden: true, cell: (i) => String(i.cidr_count) },
+    { id: "records", header: "Used by records", hidden: true, cell: (i) => String(i.record_count) },
   ],
   fields: [
     {

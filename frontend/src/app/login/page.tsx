@@ -14,11 +14,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { useLogin } from "@/features/auth/hooks";
-import { ApiError } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { AWS_LOGO_DARK } from "@/lib/aws-logo";
+import type { DashboardSummary } from "@/types/api";
 
-function safeNext(value: string | null): string {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/dashboard";
+function safeNext(value: string | null): string | null {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : null;
+}
+
+/** Like the AWS console: accounts without hosted zones start on the Route 53 home page, others on the dashboard. */
+async function landingPage(): Promise<string> {
+  try {
+    const summary = await api.get<DashboardSummary>("/dashboard/summary");
+    return summary.hosted_zones > 0 ? "/dashboard" : "/home";
+  } catch {
+    return "/dashboard";
+  }
 }
 
 function LoginForm() {
@@ -36,7 +47,7 @@ function LoginForm() {
     event.preventDefault();
     setTouched(true);
     if (!email.trim() || !password) return;
-    login.mutate({ email, password }, { onSuccess: () => router.replace(next) });
+    login.mutate({ email, password }, { onSuccess: async () => router.replace(next ?? (await landingPage())) });
   };
 
   const serverError = login.error instanceof ApiError ? login.error.detail : login.error ? "Unable to sign in. Please try again." : null;

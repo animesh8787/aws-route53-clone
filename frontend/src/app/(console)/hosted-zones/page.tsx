@@ -101,9 +101,10 @@ export default function HostedZonesPage() {
               variant="awsui-h1-sticky"
               counter={data ? `(${data.total})` : undefined}
               info={<Link variant="info" onFollow={() => help.open("hosted-zones")}>Info</Link>}
-              description="Hosted zones contain the DNS records that route traffic for a domain."
+              description="Automatic mode is the current search behavior: it matches hosted zone names, descriptions and IDs as you type."
               actions={
                 <SpaceBetween direction="horizontal" size="xs">
+                  <Button iconName="refresh" ariaLabel="Refresh hosted zones" loading={isFetching && !isPending} onClick={() => void refetch()} />
                   <Button disabled={!current} onClick={() => current && router.push(`/hosted-zones/${current.zone_id}`)}>View details</Button>
                   <Button disabled={!current} onClick={() => setEditing(current ?? null)}>Edit</Button>
                   <Button disabled={!current} onClick={() => setDeleting(current ?? null)}>Delete</Button>
@@ -116,10 +117,10 @@ export default function HostedZonesPage() {
           }
           filter={
             <SpaceBetween direction="horizontal" size="xs">
-              <div style={{ minWidth: 320 }}>
+              <div style={{ minWidth: 320, width: "min(600px, 50vw)" }}>
                 <TextFilter
                   filteringText={filterText}
-                  filteringPlaceholder="Filter hosted zones by name, description or ID"
+                  filteringPlaceholder="Filter records by property or value"
                   filteringAriaLabel="Filter hosted zones"
                   onChange={({ detail }) => setFilterText(detail.filteringText)}
                   countText={filtered && data ? `${data.total} ${data.total === 1 ? "match" : "matches"}` : undefined}

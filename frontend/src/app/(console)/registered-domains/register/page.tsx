@@ -15,8 +15,8 @@ import Table from "@cloudscape-design/components/table";
 import Toggle from "@cloudscape-design/components/toggle";
 import Wizard from "@cloudscape-design/components/wizard";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { usePageChrome } from "@/components/layout/ChromeContext";
 import { useFlash } from "@/components/layout/FlashProvider";
@@ -72,6 +72,17 @@ export default function RegisterDomainPage() {
 
   const search = useMutation({ mutationFn: (name: string) => api.get<Availability[]>("/domains/availability", { name }), onSuccess: (r) => { setResults(r); setSelected(null); } });
   const register = useMutation({ mutationFn: (body: unknown) => api.post<ResourceItem>("/resources/domain", body) });
+
+  // A name handed over from the dashboard's "Register domain" box is searched straight away.
+  const initialName = useSearchParams().get("name");
+  const searchedInitial = useRef(false);
+  useEffect(() => {
+    if (initialName && !searchedInitial.current) {
+      searchedInitial.current = true;
+      setQuery(initialName);
+      search.mutate(initialName);
+    }
+  }, [initialName, search]);
 
   const errors = contactErrors(contact);
   const yearsError = validateInt(years, "Years", 1, 10);

@@ -5,6 +5,7 @@ import Box from "@cloudscape-design/components/box";
 import BreadcrumbGroup from "@cloudscape-design/components/breadcrumb-group";
 import Modal from "@cloudscape-design/components/modal";
 import SideNavigation from "@cloudscape-design/components/side-navigation";
+import SplitPanel from "@cloudscape-design/components/split-panel";
 import Spinner from "@cloudscape-design/components/spinner";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useCallback, useState } from "react";
@@ -16,19 +17,22 @@ import { HelpProvider, useHelp } from "@/components/layout/HelpContext";
 import { HelpPanel } from "@/components/layout/HelpPanel";
 import { NAV_ITEMS, NAV_UNAVAILABLE } from "@/components/layout/nav-items";
 import { ShortcutsProvider } from "@/components/layout/ShortcutsProvider";
+import { SplitPanelProvider, useSplitPanelState } from "@/components/layout/SplitPanelContext";
 import { TopBar } from "@/components/layout/topbar/TopBar";
 import { useCurrentUser, useLogout } from "@/features/auth/hooks";
 import { CloudShell } from "@/features/cloudshell/CloudShell";
 
 function activeHref(pathname: string): string {
   const flat = NAV_ITEMS.flatMap((i) => (i.type === "section" ? i.items : [i])).filter((i) => i.type === "link") as { href: string }[];
-  return flat.find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))?.href ?? "/dashboard";
+  return flat.find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))?.href ?? pathname;
 }
 
 export function ConsoleShell({ children }: { children: React.ReactNode }) {
   return (
     <HelpProvider>
-      <ConsoleShellInner>{children}</ConsoleShellInner>
+      <SplitPanelProvider>
+        <ConsoleShellInner>{children}</ConsoleShellInner>
+      </SplitPanelProvider>
     </HelpProvider>
   );
 }
@@ -45,6 +49,8 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [unavailableService, setUnavailableService] = useState<string | null>(null);
   const toggleCloudShell = useCallback(() => setCloudShellOpen((o) => !o), []);
+  const splitPanel = useSplitPanelState();
+  const [splitPanelOpen, setSplitPanelOpen] = useState(true);
 
   if (isPending || !user) {
     return (
@@ -101,6 +107,16 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
           navigation={<SideNavigation header={{ text: "Route 53", href: "/dashboard" }} activeHref={activeHref(pathname)} items={NAV_ITEMS} onFollow={follow} />}
           breadcrumbs={<BreadcrumbGroup items={[{ text: "Route 53", href: "/dashboard" }, ...chromeState.chrome.breadcrumbs]} onFollow={follow} ariaLabel="Breadcrumbs" />}
           notifications={<FlashMessages />}
+          splitPanel={
+            splitPanel ? (
+              <SplitPanel header={splitPanel.header} hidePreferencesButton closeBehavior="collapse" i18nStrings={{ openButtonAriaLabel: "Open panel", closeButtonAriaLabel: "Close panel", resizeHandleAriaLabel: "Resize panel" }}>
+                {splitPanel.content}
+              </SplitPanel>
+            ) : undefined
+          }
+          splitPanelOpen={splitPanelOpen}
+          onSplitPanelToggle={({ detail }) => setSplitPanelOpen(detail.open)}
+          splitPanelPreferences={{ position: "bottom" }}
           content={<Suspense fallback={<Spinner size="large" />}>{children}</Suspense>}
         />
         <div id="f" style={{ position: "sticky", bottom: 0, zIndex: 1001 }}>

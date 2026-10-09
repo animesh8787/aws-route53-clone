@@ -56,6 +56,7 @@ def _validate(db: Session, owner_id: int, data: dict, existing: Resource | None)
     data["zone_name"] = zone.name
     data["record_type"] = policy.data["record_type"]
     data["policy_name"] = policy.name
+    data["version_comment"] = next((ver.get("comment", "") for ver in policy.data["versions"] if ver["version"] == data["policy_version"]), "")
     return data
 
 

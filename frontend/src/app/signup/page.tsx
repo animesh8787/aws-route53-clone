@@ -44,7 +44,7 @@ export default function SignupPage() {
     event.preventDefault();
     setTouched(true);
     if (errors.email || errors.password || errors.confirm) return;
-    register.mutate({ email, password, display_name: name }, { onSuccess: () => router.replace("/dashboard") });
+    register.mutate({ email, password, display_name: name }, { onSuccess: () => router.replace("/home") });
   };
 
   return (

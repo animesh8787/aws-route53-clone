@@ -2,6 +2,7 @@
 
 import Box from "@cloudscape-design/components/box";
 import Button from "@cloudscape-design/components/button";
+import ColumnLayout from "@cloudscape-design/components/column-layout";
 import Link from "@cloudscape-design/components/link";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import Table from "@cloudscape-design/components/table";
@@ -128,13 +129,13 @@ export const healthCheckConfig: ResourceConfig = {
     { key: "type", label: "types", options: TYPES.map((t) => ({ value: t.value, label: t.label })) },
   ],
   columns: [
-    { id: "name", header: "Name", sortKey: "name", cell: (i) => i.name },
-    { id: "id", header: "Health check ID", cell: (i) => String(i.health_check_id) },
-    { id: "status", header: "Status", sortKey: "status", cell: (i) => <StatusBadge status={i.status} /> },
-    { id: "type", header: "Type", sortKey: "type", cell: (i) => typeLabel(i.type) },
-    { id: "endpoint", header: "Endpoint", cell: (i) => `${i.endpoint}:${i.port}${i.path ?? ""}` },
+    { id: "id", header: "ID", cell: (i) => String(i.health_check_id) },
+    { id: "name", header: "Name", sortKey: "name", link: true, cell: (i) => i.name },
+    { id: "status", header: "State", sortKey: "status", cell: (i) => <StatusBadge status={i.status} /> },
+    { id: "details", header: "Details", cell: (i) => `${typeLabel(i.type)} ${i.endpoint}:${i.port}${i.path ?? ""}` },
+    { id: "type", header: "Type", sortKey: "type", hidden: true, cell: (i) => typeLabel(i.type) },
     { id: "interval", header: "Interval", hidden: true, cell: (i) => `${i.request_interval}s` },
-    { id: "records", header: "Used by records", cell: (i) => String(i.record_count) },
+    { id: "records", header: "Used by records", hidden: true, cell: (i) => String(i.record_count) },
     { id: "created", header: "Created", sortKey: "created_at", hidden: true, cell: (i) => new Date(String(i.created_at).endsWith("Z") ? String(i.created_at) : `${i.created_at}Z`).toLocaleDateString() },
   ],
   defaults: { type: "HTTP", port: "80", path: "/", request_interval: "30", failure_threshold: "3" },
@@ -176,6 +177,54 @@ export const healthCheckConfig: ResourceConfig = {
     { label: "Disabled", value: (i) => (i.disabled ? "Yes" : "No") },
   ],
   detailActions: (item, refresh) => <ToggleButton item={item} refresh={refresh} />,
+  splitPanel: {
+    emptyHeader: "Select a health check",
+    emptyText: "Select a health check in the table to see its details and latest status here.",
+    render: (i) => (
+      <SpaceBetween size="m">
+        <ColumnLayout columns={4} variant="text-grid">
+          <div>
+            <Box variant="awsui-key-label">Health check ID</Box>
+            <div>{String(i.health_check_id)}</div>
+          </div>
+          <div>
+            <Box variant="awsui-key-label">Status</Box>
+            <StatusBadge status={i.status} />
+          </div>
+          <div>
+            <Box variant="awsui-key-label">Monitors</Box>
+            <div>
+              {typeLabel(i.type)} {String(i.endpoint)}:{String(i.port)}
+              {i.path ? String(i.path) : ""}
+            </div>
+          </div>
+          <div>
+            <Box variant="awsui-key-label">Used by records</Box>
+            <div>{String(i.record_count)}</div>
+          </div>
+          <div>
+            <Box variant="awsui-key-label">Request interval</Box>
+            <div>{String(i.request_interval)} seconds</div>
+          </div>
+          <div>
+            <Box variant="awsui-key-label">Failure threshold</Box>
+            <div>{String(i.failure_threshold)}</div>
+          </div>
+          <div>
+            <Box variant="awsui-key-label">Regions</Box>
+            <div>{(i.regions as string[]).length ? (i.regions as string[]).join(", ") : "All regions"}</div>
+          </div>
+          <div>
+            <Box variant="awsui-key-label">Inverted / disabled</Box>
+            <div>
+              {i.inverted ? "Yes" : "No"} / {i.disabled ? "Yes" : "No"}
+            </div>
+          </div>
+        </ColumnLayout>
+        <NextLink href={`/health-checks/${String(i.health_check_id)}`}>View monitoring and history</NextLink>
+      </SpaceBetween>
+    ),
+  },
   detailTabs: [
     { id: "monitoring", label: () => "Monitoring", render: (i) => <Monitoring item={i} /> },
     { id: "records", label: (i) => `Records (${i.record_count})`, render: (i) => <UsedBy item={i} /> },

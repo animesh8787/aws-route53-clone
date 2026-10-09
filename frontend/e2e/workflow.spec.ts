@@ -16,7 +16,7 @@ async function chooseOption(page: Page, selectLabel: string, option: RegExp | st
 
 async function openZone(page: Page, name: string) {
   await page.goto("/hosted-zones");
-  await page.getByPlaceholder("Filter hosted zones by name, description or ID").fill(name);
+  await page.getByLabel("Filter hosted zones").fill(name);
   await page.getByRole("link", { name, exact: true }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
 }
@@ -35,7 +35,7 @@ test("full Route 53 workflow with persistence across sessions", async ({ page })
   // ---- hosted zones: search / filter / pagination
   await page.getByRole("link", { name: "Hosted zones" }).first().click();
   await expect(page.getByRole("heading", { name: /Hosted zones/ })).toBeVisible();
-  const search = page.getByPlaceholder("Filter hosted zones by name, description or ID");
+  const search = page.getByLabel("Filter hosted zones");
   await search.fill("mycompany");
   await expect(page.getByRole("link", { name: "mycompany.dev", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "example.com", exact: true })).toHaveCount(0);
@@ -171,7 +171,7 @@ test("unauthenticated users are redirected and every console page renders", asyn
   await expect(page).toHaveURL(/\/login/);
   await login(page);
   const routes: [string, RegExp][] = [
-    ["/dashboard", /Route 53 dashboard/], ["/hosted-zones", /^Hosted zones/], ["/health-checks", /^Health checks/], ["/profiles", /^Profiles/],
+    ["/dashboard", /Route 53 Dashboard/], ["/home", /Amazon Route 53/], ["/hosted-zones", /^Hosted zones/], ["/health-checks", /^Health checks/], ["/profiles", /^Profiles/],
     ["/cidr-collections", /^CIDR collections/], ["/traffic-policies", /^Traffic policies/], ["/policy-records", /^Policy records/],
     ["/registered-domains", /^Registered domains/], ["/domain-requests", /^Requests/], ["/resolver", /^VPCs/], ["/resolver-inbound", /^Inbound endpoints/],
     ["/resolver-outbound", /^Outbound endpoints/], ["/resolver-rules", /^Rules/], ["/resolver-query-logging", /^Query logging/],

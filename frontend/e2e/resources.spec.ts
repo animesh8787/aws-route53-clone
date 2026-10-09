@@ -199,8 +199,8 @@ test("domains: search, register, edit, renew, request history", async ({ page })
 
   // the registration created a hosted zone and requests
   await page.goto("/domain-requests");
-  await expect(page.getByRole("row", { name: /Register domain.*e2edomainidea/ })).toBeVisible();
-  await expect(page.getByRole("row", { name: /Renew domain.*e2edomainidea/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /e2edomainidea.*Register domain/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /e2edomainidea.*Renew domain/ })).toBeVisible();
 });
 
 async function choose(page: Page, select: string | RegExp, option: string | RegExp) {

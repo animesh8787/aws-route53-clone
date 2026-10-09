@@ -19,7 +19,7 @@ def log(db: Session, owner_id: int, action: str, resource_type: str, resource_na
 
 
 def recent(db: Session, owner_id: int, limit: int = 20) -> list[ActivityEvent]:
-    query = select(ActivityEvent).where(ActivityEvent.owner_id == owner_id).order_by(ActivityEvent.id.desc()).limit(limit)
+    query = select(ActivityEvent).where(ActivityEvent.owner_id == owner_id).order_by(ActivityEvent.created_at.desc(), ActivityEvent.id.desc()).limit(limit)
     return list(db.scalars(query))
 
 

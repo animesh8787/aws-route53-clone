@@ -50,6 +50,8 @@ export interface ColumnSpec {
   cell: (item: ResourceItem) => ReactNode;
   sortKey?: string;
   hidden?: boolean; // hidden by default (still available in preferences)
+  /** Also render this column as a link to the detail page (the first column always is). */
+  link?: boolean;
 }
 
 export interface FilterSpec {
@@ -106,6 +108,10 @@ export interface ResourceConfig {
   rowHref?: (item: ResourceItem) => string | null;
   /** Lets one config use a bespoke create page route (e.g. domain registration). */
   createHref?: string;
+  /** Bottom split panel showing the selected row (like "Select a health check" in the console). */
+  splitPanel?: { emptyHeader: string; emptyText: string; render: (item: ResourceItem) => ReactNode };
+  /** Banner above a full-page table (e.g. "Premium domains now available"). */
+  notice?: ReactNode;
   /** Content shown above the table (getting-started panels, banners). The table then becomes a container with an h2 header. */
   intro?: ReactNode;
   /** Extra header buttons, placed before the Create button. */

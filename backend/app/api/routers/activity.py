@@ -40,7 +40,7 @@ def list_activity(
         query = query.where(ActivityEvent.action == filter_action)
     if filter_resource_type:
         query = query.where(ActivityEvent.resource_type == filter_resource_type)
-    rows, total = paginate(db, query.order_by(ActivityEvent.id.desc()), page, page_size)
+    rows, total = paginate(db, query.order_by(ActivityEvent.created_at.desc(), ActivityEvent.id.desc()), page, page_size)
     return Page(items=[_out(r) for r in rows], total=total, page=page, page_size=page_size, pages=page_count(total, page_size))
 
 
