@@ -12,10 +12,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.dns.constants import AWS_REGIONS, REGION_CONTINENT
+from app.dns.mock_data import VPC_BY_ID
 from app.dns.validators import DnsValueError, normalize_hostname
 from app.models import DnsRecord, HostedZone, Resource
 from app.repositories import record_repo
 from app.schemas.dns import Answer, ResolveResponse
+from app.services import resolver_policy
 
 MAX_CHAIN = 8
 MULTIVALUE_LIMIT = 8
@@ -37,13 +39,16 @@ def _healthy(record: DnsRecord) -> bool:
     return hc is None or hc.disabled or hc.status == "HEALTHY"
 
 
-def _find_zone(db: Session, fqdn: str, view: str) -> HostedZone | None:
+def _find_zone(db: Session, fqdn: str, view: str, source_vpc: str | None = None) -> HostedZone | None:
+    """Longest-suffix zone. From a VPC only public zones and private zones associated with that VPC are visible."""
     name = fqdn.rstrip(".")
     zones = db.scalars(select(HostedZone)).all()
+    if source_vpc:
+        zones = [z for z in zones if not z.is_private or any(a.vpc_id == source_vpc for a in z.vpcs)]
     matches = [z for z in zones if name == z.name or name.endswith("." + z.name)]
     if not matches:
         return None
-    want_private = view == "private"
+    want_private = view == "private" or bool(source_vpc)
     return max(matches, key=lambda z: (len(z.name), z.is_private == want_private))
 
 
@@ -208,6 +213,7 @@ def _resolve_alias(ctx: _Ctx, zone: HostedZone, name: str, record: DnsRecord, rt
 def resolve(
     db: Session, name: str, rtype: str, *, view: str = "public", client_region: str | None = None,
     client_country: str | None = None, client_continent: str | None = None, client_ip: str | None = None, seed: int | None = None,
+    source_vpc: str | None = None, owner_id: int | None = None,
 ) -> ResolveResponse:  # fmt: skip
     rtype = rtype.upper()
     try:
@@ -216,8 +222,30 @@ def resolve(
         return ResolveResponse(name=name, type=rtype, rcode="FORMERR", answers=[], trace=[str(exc)])
     continent = (client_continent or "").upper() or (REGION_CONTINENT.get((client_region or "").split("-")[0]) if client_region else None)
     country = (client_country or "").upper() or None
-    ctx = _Ctx(db, random.Random(seed), client_region, country, continent, (client_ip or '').strip() or None)
-    zone = _find_zone(db, fqdn, view)
+    ctx = _Ctx(db, random.Random(seed), client_region, country, continent, (client_ip or "").strip() or None)
+
+    vpc = (source_vpc or "").strip() or None
+    if vpc and vpc not in VPC_BY_ID:
+        return ResolveResponse(name=fqdn, type=rtype, rcode="FORMERR", answers=[], trace=[f"Unknown source VPC '{vpc}'."])
+    if vpc and owner_id is not None:
+        ctx.trace.append(f"Query originates in {vpc} ({VPC_BY_ID[vpc]['name']}).")
+        for config in resolver_policy.logging_destinations(db, owner_id, vpc):
+            ctx.trace.append(f"Query logging: this query is logged to {config.data['destination_arn']} ({config.name}).")
+        verdict = resolver_policy.evaluate_firewall(db, owner_id, vpc, fqdn)
+        ctx.trace.extend(verdict.trace)
+        if verdict.action == "BLOCK":
+            return _blocked_response(fqdn, rtype, verdict, ctx.trace)
+
+    zone = _find_zone(db, fqdn, view, vpc)
+    if zone is None and vpc and owner_id is not None:
+        rule = resolver_policy.matching_rule(db, owner_id, vpc, fqdn)
+        if rule is not None and rule.data["rule_type"] == "FORWARD":
+            targets = [f"{t['ip']}:{t['port']}" for t in rule.data["target_ips"]]
+            ctx.trace.append(f"Resolver rule '{rule.name}' ({rule.data['domain_name']}) matches: forwarded to {', '.join(targets)} through {rule.data['outbound_endpoint_id']}.")
+            ctx.trace.append("Forwarded queries are simulated: no answer data is available from the target DNS servers.")
+            return ResolveResponse(name=fqdn, type=rtype, rcode="NOERROR", answers=[], routing_policy="forwarded", forwarded_to=targets, trace=ctx.trace)
+        if rule is not None:
+            ctx.trace.append(f"Resolver rule '{rule.name}' ({rule.data['rule_type']}) matches: the query is resolved by Route 53 or recursively on the internet (simulated).")
     if zone is None:
         ctx.trace.append("No hosted zone in this account is authoritative for that name (REFUSED).")
         return ResolveResponse(name=fqdn, type=rtype, rcode="REFUSED", answers=[], trace=ctx.trace)
@@ -227,3 +255,12 @@ def resolve(
         name=fqdn, type=rtype, rcode=rcode, answers=answers, hosted_zone_id=zone.zone_id,
         record_id=record.id if record else None, routing_policy=record.routing_policy if record else None, trace=ctx.trace,
     )  # fmt: skip
+
+
+def _blocked_response(fqdn: str, rtype: str, verdict: resolver_policy.FirewallVerdict, trace: list[str]) -> ResolveResponse:
+    if verdict.block_response == "NXDOMAIN":
+        return ResolveResponse(name=fqdn, type=rtype, rcode="NXDOMAIN", answers=[], routing_policy="firewall-block", blocked_by=verdict.rule, trace=trace)
+    if verdict.block_response == "OVERRIDE":
+        answer = Answer(name=fqdn, type="CNAME", ttl=verdict.override_ttl, value=verdict.override_domain)
+        return ResolveResponse(name=fqdn, type=rtype, rcode="NOERROR", answers=[answer], routing_policy="firewall-block", blocked_by=verdict.rule, trace=trace)
+    return ResolveResponse(name=fqdn, type=rtype, rcode="NOERROR", answers=[], routing_policy="firewall-block", blocked_by=verdict.rule, trace=trace)

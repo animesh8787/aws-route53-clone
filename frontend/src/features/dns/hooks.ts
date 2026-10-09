@@ -22,6 +22,8 @@ export interface ResolveParams {
   client_region?: string;
   client_country?: string;
   client_continent?: string;
+  client_ip?: string;
+  source_vpc?: string;
   view?: string;
   seed?: number;
 }

@@ -1,6 +1,6 @@
 import type { SideNavigationProps } from "@cloudscape-design/components/side-navigation";
 
-/** Mirrors the Route 53 console's left navigation. Entries without a real page open a Coming Soon page. */
+/** Mirrors the Route 53 console's left navigation. Every entry opens a working page. */
 export const NAV_ITEMS: SideNavigationProps.Item[] = [
   { type: "link", text: "Dashboard", href: "/dashboard" },
   { type: "link", text: "Hosted zones", href: "/hosted-zones" },
@@ -47,21 +47,3 @@ export const NAV_ITEMS: SideNavigationProps.Item[] = [
     ],
   },
 ];
-
-/** Titles for the placeholder pages, keyed by route segment. */
-export const COMING_SOON_TITLES: Record<string, string> = {
-  "health-checks": "Health checks",
-  profiles: "Profiles",
-  "cidr-collections": "CIDR collections",
-  "traffic-policies": "Traffic policies",
-  "policy-records": "Policy records",
-  "registered-domains": "Registered domains",
-  "domain-requests": "Domain requests",
-  resolver: "Resolver VPCs",
-  "resolver-inbound": "Inbound endpoints",
-  "resolver-outbound": "Outbound endpoints",
-  "resolver-rules": "Resolver rules",
-  "resolver-query-logging": "Resolver query logging",
-  "dns-firewall": "DNS Firewall rule groups",
-  "dns-firewall-domain-lists": "DNS Firewall domain lists",
-};

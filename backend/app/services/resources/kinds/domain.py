@@ -116,7 +116,7 @@ def _present(db: Session, resource: Resource, flat: dict) -> dict:
 domain = register(
     ResourceKind(
         kind="domain", label="Registered domain", id_prefix="dom", href="/registered-domains", payload=DomainPayload, default_status="ACTIVE",
-        validate=_validate, after_create=_after_create, after_update=_after_update, present=_present, deletable=False,
+        validate=_validate, after_create=_after_create, after_update=_after_update, present=_present, deletable=False, sort_keys=("expires_at",),
     )
 )
 
@@ -128,6 +128,6 @@ class DomainRequestPayload(BaseModel):
 domain_request = register(
     ResourceKind(
         kind="domain_request", label="Domain request", id_prefix="req", href="/domain-requests", payload=DomainRequestPayload,
-        default_status="IN_PROGRESS", before_read=domain_service.settle_requests, deletable=False,
+        default_status="IN_PROGRESS", before_read=domain_service.settle_requests, deletable=False, filters=("request_type",), sort_keys=("request_type",),
     )
 )

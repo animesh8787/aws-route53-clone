@@ -202,3 +202,80 @@ test("domains: search, register, edit, renew, request history", async ({ page })
   await expect(page.getByRole("row", { name: /Register domain.*e2edomainidea/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /Renew domain.*e2edomainidea/ })).toBeVisible();
 });
+
+async function choose(page: Page, select: string | RegExp, option: string | RegExp) {
+  await page.getByRole("button", { name: select }).first().click();
+  await page.getByRole("option", { name: option }).first().click();
+}
+
+test("resolver: VPC overview, endpoint and forwarding rule", async ({ page }) => {
+  await login(page);
+  await page.goto("/resolver");
+  await expect(page.getByRole("link", { name: "vpc-0a1b2c3d4e5f60789" })).toBeVisible();
+  await page.getByRole("link", { name: "vpc-0a1b2c3d4e5f60789" }).click();
+  await expect(page.getByRole("tab", { name: /Endpoints \(2\)/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "corp-outbound" })).toBeVisible();
+
+  // outbound endpoint with an auto-assigned address
+  await page.goto("/resolver-outbound/create");
+  await page.getByRole("textbox", { name: "Endpoint name" }).fill("e2e-out");
+  await choose(page, "VPC", /vpc-0f9e8d7c6b5a43210/);
+  await page.getByRole("textbox", { name: /Security group IDs/ }).fill("sg-0a1b2c3d4e5f");
+  await page.getByPlaceholder("subnet-0a1b2c3d").nth(0).fill("subnet-0a1b2c3d");
+  await page.getByPlaceholder("subnet-0a1b2c3d").nth(1).fill("not-a-subnet");
+  await page.getByRole("button", { name: "Create outbound endpoint" }).last().click();
+  await expect(page.getByText(/use a subnet ID like subnet-0a1b2c3d/).first()).toBeVisible();
+  await page.getByPlaceholder("subnet-0a1b2c3d").nth(1).fill("subnet-0b2c3d4e");
+  await page.getByRole("button", { name: "Create outbound endpoint" }).last().click();
+  await expect(page.getByText("Outbound endpoint e2e-out was created successfully.")).toBeVisible();
+  await expect(page.getByText(/10\.1\.0\.\d+/).first()).toBeVisible(); // auto-assigned from 10.1.0.0/16
+
+  // forwarding rule through that endpoint
+  await page.goto("/resolver-rules/create");
+  await page.getByRole("textbox", { name: "Rule name" }).fill("e2e-rule");
+  await page.getByRole("textbox", { name: "Domain name" }).fill("e2e.internal.test");
+  await choose(page, "Outbound endpoint", /e2e-out/);
+  await page.getByPlaceholder("10.0.1.53").fill("10.1.9.9");
+  await page.getByRole("button", { name: "Create resolver rule" }).last().click();
+  await expect(page.getByText("Resolver rule e2e-rule was created successfully.")).toBeVisible();
+
+  // the endpoint is in use now
+  await page.goto("/resolver-outbound");
+  await page.getByPlaceholder(/Filter endpoints/).fill("e2e-out");
+  await expect(page.getByRole("row")).toHaveCount(2);
+  await page.getByRole("radio").first().check();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await confirmDelete(page);
+  await expect(page.getByText(/used by 1 forwarding rule/).first()).toBeVisible();
+});
+
+test("DNS Firewall: domain list, rule group and the simulator blocking a query", async ({ page }) => {
+  await login(page);
+  await page.goto("/dns-firewall-domain-lists/create");
+  await page.getByRole("textbox", { name: "Domain list name" }).fill("e2e-block");
+  await page.getByRole("textbox", { name: "Domains", exact: true }).fill("bad host!");
+  await page.getByRole("button", { name: "Create domain list" }).last().click();
+  await expect(page.getByText(/Line 1/).first()).toBeVisible();
+  await page.getByRole("textbox", { name: "Domains", exact: true }).fill("e2eblocked.example.com");
+  await page.getByRole("button", { name: "Create domain list" }).last().click();
+  await expect(page.getByText("Domain list e2e-block was created successfully.")).toBeVisible();
+
+  await page.goto("/dns-firewall/create");
+  await page.getByRole("textbox", { name: "Rule group name" }).fill("e2e-group");
+  await page.getByRole("button", { name: "Add rule" }).click();
+  await page.getByPlaceholder("block-malware").fill("e2e-rule");
+  await page.getByPlaceholder("10", { exact: true }).fill("5");
+  await choose(page, /Domain list 1/, /e2e-block/);
+  await page.getByRole("button", { name: "Add VPC" }).click();
+  await choose(page, /VPC 1/, /vpc-0a1b2c3d4e5f60789/);
+  await page.getByPlaceholder("200").fill("250");
+  await page.getByRole("button", { name: "Create rule group" }).last().click();
+  await expect(page.getByText("Rule group e2e-group was created successfully.")).toBeVisible();
+
+  await page.goto("/hosted-zones/Z04512872OH7L5Q4YLRPT/test-record");
+  await page.getByRole("textbox", { name: "Record name" }).fill("e2eblocked");
+  await choose(page, "Source VPC", /vpc-0a1b2c3d4e5f60789/);
+  await page.getByRole("button", { name: "Get response" }).click();
+  await expect(page.getByText("Blocked by DNS Firewall rule")).toBeVisible();
+  await expect(page.getByText(/BLOCK by rule 'e2e-rule'/)).toBeVisible();
+});

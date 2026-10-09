@@ -18,6 +18,7 @@ import { use, useState } from "react";
 import { usePageChrome } from "@/components/layout/ChromeContext";
 import { ErrorState } from "@/components/states/States";
 import { useResolve } from "@/features/dns/hooks";
+import { useOptions } from "@/features/resources/api";
 import { useHostedZone } from "@/features/hosted-zones/hooks";
 import { ApiError } from "@/lib/api";
 import { AWS_REGIONS, COUNTRIES, RECORD_TYPES } from "@/lib/record-config";
@@ -43,6 +44,8 @@ export default function TestRecordPage({ params }: { params: Promise<{ zoneId: s
   const [region, setRegion] = useState("");
   const [country, setCountry] = useState("");
   const [clientIp, setClientIp] = useState("");
+  const [sourceVpc, setSourceVpc] = useState("");
+  const vpcs = useOptions("vpcs");
   const [result, setResult] = useState<ResolveResponse | null>(null);
   const [sample, setSample] = useState<Record<string, number> | null>(null);
 
@@ -56,6 +59,7 @@ export default function TestRecordPage({ params }: { params: Promise<{ zoneId: s
     client_region: region || undefined,
     client_country: country || undefined,
     client_ip: clientIp.trim() || undefined,
+    source_vpc: sourceVpc || undefined,
     view: zone.data.type,
   });
 
@@ -103,6 +107,15 @@ export default function TestRecordPage({ params }: { params: Promise<{ zoneId: s
             <FormField label={<>Client IP address <i>- optional</i></>} description="Used by IP-based routing (CIDR collections).">
               <Input value={clientIp} onChange={({ detail }) => setClientIp(detail.value)} placeholder="203.0.113.10" ariaLabel="Client IP address" />
             </FormField>
+            <FormField label={<>Source VPC <i>- optional</i></>} description="Apply that VPC's DNS Firewall, forwarding rules, query logging and private zones.">
+              <Select
+                selectedOption={sourceVpc ? (vpcs.options.find((o) => o.value === sourceVpc) ?? { value: sourceVpc, label: sourceVpc }) : NONE}
+                options={[NONE, ...vpcs.options]}
+                onChange={({ detail }) => setSourceVpc(detail.selectedOption.value ?? "")}
+                statusType={vpcs.loading ? "loading" : "finished"}
+                ariaLabel="Source VPC"
+              />
+            </FormField>
             <FormField label="Client country" description="Used by geolocation routing.">
               <Select selectedOption={country ? { value: country, label: COUNTRIES[country] ?? country } : NONE} options={[NONE, ...Object.entries(COUNTRIES).map(([v, l]) => ({ value: v, label: l }))]} onChange={({ detail }) => setCountry(detail.selectedOption.value ?? "")} filteringType="auto" ariaLabel="Client country" />
             </FormField>
@@ -130,6 +143,18 @@ export default function TestRecordPage({ params }: { params: Promise<{ zoneId: s
                 <Box variant="awsui-key-label">Hosted zone</Box>
                 <div>{result.hosted_zone_id ?? "-"}</div>
               </div>
+              {result.blocked_by && (
+                <div>
+                  <Box variant="awsui-key-label">Blocked by DNS Firewall rule</Box>
+                  <StatusIndicator type="error">{result.blocked_by}</StatusIndicator>
+                </div>
+              )}
+              {result.forwarded_to.length > 0 && (
+                <div>
+                  <Box variant="awsui-key-label">Forwarded to</Box>
+                  <div>{result.forwarded_to.join(", ")}</div>
+                </div>
+              )}
             </ColumnLayout>
             <Table
               variant="embedded"

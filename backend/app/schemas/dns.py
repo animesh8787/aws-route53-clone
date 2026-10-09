@@ -16,6 +16,8 @@ class ResolveResponse(BaseModel):
     hosted_zone_id: str | None = None
     record_id: int | None = None
     routing_policy: str | None = None
+    forwarded_to: list[str] = []
+    blocked_by: str | None = None
     trace: list[str] = []
 
 
@@ -27,3 +29,4 @@ class DashboardSummary(BaseModel):
     health_checks: int
     unhealthy_health_checks: int
     recent_zones: list[dict]
+    counts: dict[str, int] = {}

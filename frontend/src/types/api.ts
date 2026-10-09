@@ -151,6 +151,8 @@ export interface ResolveResponse {
   hosted_zone_id: string | null;
   record_id: number | null;
   routing_policy: string | null;
+  forwarded_to: string[];
+  blocked_by: string | null;
   trace: string[];
 }
 
@@ -162,6 +164,7 @@ export interface DashboardSummary {
   health_checks: number;
   unhealthy_health_checks: number;
   recent_zones: { zone_id: string; name: string; type: ZoneType; record_count: number }[];
+  counts: Record<string, number>;
 }
 
 export interface MockVpc {

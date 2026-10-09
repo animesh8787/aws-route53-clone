@@ -187,9 +187,42 @@ def _seed_console_resources(db: Session, owner_id: int) -> None:
     expiring = resource_service.create(db, owner_id, kind("domain"), {"name": "acme-corp.io", "years": 1, "auto_renew": False, "transfer_lock": False, "contact": contact})
     expiring.data = {**expiring.data, "expires_at": (datetime.utcnow() + timedelta(days=25)).isoformat(timespec="seconds")}
     db.commit()
+    prod = "vpc-0a1b2c3d4e5f60789"
+    ips = lambda a, b: [{"subnet_id": "subnet-0a1b2c3d4e", "ip": a}, {"subnet_id": "subnet-0b2c3d4e5f", "ip": b}]  # noqa: E731
+    resource_service.create(
+        db, owner_id, kind("resolver_inbound"),
+        {"name": "corp-inbound", "vpc_id": prod, "security_group_ids": ["sg-0a1b2c3d4e5f6a7b8"], "protocols": ["Do53"], "ip_addresses": ips("10.0.1.10", "10.0.2.10")},
+        public_id="rslvr-in-0a1b2c3d4e5f6a7b8",
+    )  # fmt: skip
+    outbound = resource_service.create(
+        db, owner_id, kind("resolver_outbound"),
+        {"name": "corp-outbound", "vpc_id": prod, "security_group_ids": ["sg-0a1b2c3d4e5f6a7b8"], "protocols": ["Do53"], "ip_addresses": ips("10.0.1.20", "10.0.2.20")},
+        public_id="rslvr-out-0a1b2c3d4e5f6a7b8",
+    )  # fmt: skip
+    rule = resource_service.create(
+        db, owner_id, kind("resolver_rule"),
+        {"name": "forward-corp", "rule_type": "FORWARD", "domain_name": "corp.example.net", "outbound_endpoint_id": outbound.public_id,
+         "target_ips": [{"ip": "10.0.1.53", "port": 53}, {"ip": "10.0.2.53", "port": 53}], "vpc_ids": [prod]},
+    )  # fmt: skip
+    qlog = resource_service.create(
+        db, owner_id, kind("query_logging"),
+        {"name": "resolver-query-logs", "destination_type": "cloudwatch-logs", "destination_arn": "arn:aws:logs:us-east-1:123456789012:log-group:/route53/resolver-queries", "vpc_ids": [prod]},
+    )  # fmt: skip
+    blocked = resource_service.create(
+        db, owner_id, kind("fw_domain_list"),
+        {"name": "blocked-domains", "domains": ["malware.example.org", "*.phishing.example.org", "tracker.example.net"]},
+        public_id="rslvr-fdl-0a1b2c3d4e5f6a7b8",
+    )  # fmt: skip
+    resource_service.create(db, owner_id, kind("fw_domain_list"), {"name": "allowed-partners", "domains": ["partner.example.com", "*.cdn.example.com"]})
+    group = resource_service.create(
+        db, owner_id, kind("fw_rule_group"),
+        {"name": "baseline-firewall", "description": "Blocks known bad domains", "associations": [{"vpc_id": prod, "priority": 200}],
+         "rules": [{"name": "block-malware", "priority": 10, "domain_list_id": blocked.public_id, "action": "BLOCK", "block_response": "NXDOMAIN"}]},
+    )  # fmt: skip
     resource_service.create(
         db, owner_id, kind("profile"),
-        {"name": "production-dns", "description": "DNS settings shared by production VPCs", "vpc_ids": ["vpc-0a1b2c3d4e5f60789"], "zone_ids": ["Z1R8UBAEXAMPLE6PRIV"]},
+        {"name": "production-dns", "description": "DNS settings shared by production VPCs", "vpc_ids": [prod], "zone_ids": ["Z1R8UBAEXAMPLE6PRIV"],
+         "resource_ids": [rule.public_id, qlog.public_id, group.public_id]},
     )  # fmt: skip
 
 

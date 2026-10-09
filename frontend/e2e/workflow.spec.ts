@@ -165,13 +165,25 @@ test("BIND import preview, export and DNS test record", async ({ page }) => {
   await expect(page.getByText("NOERROR")).toBeVisible();
 });
 
-test("unauthenticated users are redirected and coming-soon pages render", async ({ page, context }) => {
+test("unauthenticated users are redirected and every console page renders", async ({ page, context }) => {
   await context.clearCookies();
   await page.goto("/hosted-zones");
   await expect(page).toHaveURL(/\/login/);
   await login(page);
-  await page.goto("/resolver");
-  await expect(page.getByText("Resolver VPCs is coming soon")).toBeVisible();
+  const routes: [string, RegExp][] = [
+    ["/dashboard", /Route 53 dashboard/], ["/hosted-zones", /^Hosted zones/], ["/health-checks", /^Health checks/], ["/profiles", /^Profiles/],
+    ["/cidr-collections", /^CIDR collections/], ["/traffic-policies", /^Traffic policies/], ["/policy-records", /^Policy records/],
+    ["/registered-domains", /^Registered domains/], ["/domain-requests", /^Requests/], ["/resolver", /^VPCs/], ["/resolver-inbound", /^Inbound endpoints/],
+    ["/resolver-outbound", /^Outbound endpoints/], ["/resolver-rules", /^Rules/], ["/resolver-query-logging", /^Query logging/],
+    ["/dns-firewall", /^Rule groups/], ["/dns-firewall-domain-lists", /^Domain lists/],
+  ];
+  for (const [route, heading] of routes) {
+    await page.goto(route);
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    await expect(page.getByText(/coming soon/i)).toHaveCount(0);
+  }
+  await page.goto("/not-a-real-page");
+  await expect(page.getByText(/404|could not be found/i).first()).toBeVisible();
 });
 
 test("every record type, alias and weighted routing can be created through the editor", async ({ page }) => {
