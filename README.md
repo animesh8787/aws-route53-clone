@@ -99,7 +99,7 @@ frontend/
   src/components/ (layout, common, resource, states)   src/features/ (auth, records, hosted-zones, resolver, firewall, assistant, cloudshell ...)
   src/hooks/  src/lib/ (api, dns-validation, record-config, record-schema, resource-config)  src/types/
   e2e/ (Playwright)   Dockerfile
-docs/screenshots/   deployment/DEPLOYMENT.md   docker-compose.yml   render.yaml   .env.example
+docs/screenshots/   docker-compose.yml   render.yaml   .env.example
 ```
 
 ## Local setup
@@ -265,7 +265,14 @@ cd frontend && PW_CHANNEL=chrome npm run test:e2e   # Playwright, 22 tests; omit
 - **End to end (Playwright, production build, throw-away database):** sign-up validation and sample data, password change and sessions, lockout, the full hosted-zone and record workflow with persistence across sessions, every record type through the editor, BIND import/export, every console area (create, validate, edit, delete), the top bar, billing, tags and DNSSEC, and a smoke test that opens every navigation entry.
 
 ## Deployment
-Target: **Vercel** (frontend) + **Render free web service** (API) + **Turso** (hosted SQLite), all free. Step-by-step instructions are in [`deployment/DEPLOYMENT.md`](deployment/DEPLOYMENT.md). The browser only talks to the Vercel origin (`/api/*` is rewritten to the API), so the session cookie stays first-party.
+Target: **Vercel** (frontend) + **Render free web service** (API) + **Turso** (hosted SQLite), all free. The browser only talks to the Vercel origin: `frontend/next.config.ts` rewrites `/api/*` to `BACKEND_URL` (read at build time), so the session cookie stays first-party.
+
+1. **Render** → New → Blueprint → pick the repository. It builds `backend/Dockerfile` from `render.yaml`, generates `SECRET_KEY` and checks `/api/health`.
+2. **Turso** (durable data): create a free database and set `DATABASE_URL=sqlite+libsql://<db>-<org>.turso.io?secure=true` and `TURSO_AUTH_TOKEN` on Render. Without it the SQLite file is rebuilt and re-seeded on every restart (Render's free plan has no disk).
+3. **Vercel** → import the repository, Root Directory `frontend`, env `BACKEND_URL=https://<service>.onrender.com`.
+4. Optional: set `GROQ_API_KEY` on Render to switch Amazon Q on.
+
+Free Render services sleep after about 15 minutes idle; the first request afterwards takes up to a minute. Tables are created on start (`Base.metadata.create_all`); `backend/alembic/versions/` holds the initial migration for managed databases (`alembic upgrade head`).
 
 ## Known limitations
 - **Durability on Render's free plan depends on Turso.** Render's free plan has no persistent disk, so without a Turso database the SQLite file is recreated and re-seeded on every restart. Free services also sleep when idle; the first request can take up to a minute.
