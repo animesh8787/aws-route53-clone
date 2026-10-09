@@ -63,3 +63,13 @@ class BulkDeleteRequest(BaseModel):
 class BulkDeleteResult(BaseModel):
     deleted: int
     skipped: list[dict[str, Any]]
+
+
+class BulkTtlRequest(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=500)
+    ttl: int
+
+
+class BulkTtlResult(BaseModel):
+    updated: int
+    skipped: list[dict[str, Any]]

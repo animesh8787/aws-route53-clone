@@ -168,3 +168,15 @@ def test_bulk_delete(client, zone):
     res = client.post(f"/api/hosted-zones/{zone['zone_id']}/records/bulk-delete", json={"ids": [*ids, system, 99999]}).json()
     assert res["deleted"] == 3 and len(res["skipped"]) == 2
     assert client.get(f"/api/hosted-zones/{zone['zone_id']}").json()["record_count"] == 2
+
+
+def test_bulk_ttl_update(client, zone):
+    zid = zone["zone_id"]
+    ids = [rec(client, zone, type="A", name=f"t{i}", values=["1.1.1.1"]).json()["id"] for i in range(3)]
+    alias = rec(client, zone, type="A", name="cdn", alias={"target": "x.cloudfront.net", "target_type": "cloudfront"}, ttl=None).json()["id"]
+    res = client.post(f"/api/hosted-zones/{zid}/records/bulk-ttl", json={"ids": [*ids, alias, 99999], "ttl": 900}).json()
+    assert res["updated"] == 3 and len(res["skipped"]) == 2
+    assert {client.get(f"/api/records/{i}").json()["ttl"] for i in ids} == {900}
+    bad = client.post(f"/api/hosted-zones/{zid}/records/bulk-ttl", json={"ids": ids, "ttl": -5})
+    assert bad.status_code == 422 and bad.json()["errors"][0]["field"] == "ttl"
+    assert {client.get(f"/api/records/{i}").json()["ttl"] for i in ids} == {900}

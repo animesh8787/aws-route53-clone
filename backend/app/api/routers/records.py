@@ -8,7 +8,7 @@ from app.db.session import get_db
 from app.repositories import record_repo
 from app.repositories.pagination import page_count
 from app.schemas.common import Message, Page
-from app.schemas.record import BulkDeleteRequest, BulkDeleteResult, RecordIn, RecordOut
+from app.schemas.record import BulkDeleteRequest, BulkDeleteResult, BulkTtlRequest, BulkTtlResult, RecordIn, RecordOut
 from app.services import record_service, zone_service
 
 zone_records = APIRouter(prefix="/hosted-zones/{zone_ref}/records", tags=["records"], dependencies=[Depends(get_current_user)])
@@ -50,6 +50,13 @@ def bulk_delete(zone_ref: str, body: BulkDeleteRequest, db: Session = Depends(ge
     zone = zone_service.get_or_404(db, zone_ref)
     deleted, skipped = record_service.bulk_delete(db, zone, body.ids)
     return BulkDeleteResult(deleted=deleted, skipped=skipped)
+
+
+@zone_records.post("/bulk-ttl", response_model=BulkTtlResult)
+def bulk_ttl(zone_ref: str, body: BulkTtlRequest, db: Session = Depends(get_db)):
+    zone = zone_service.get_or_404(db, zone_ref)
+    updated, skipped = record_service.bulk_update_ttl(db, zone, body.ids, body.ttl)
+    return BulkTtlResult(updated=updated, skipped=skipped)
 
 
 @records.get("/{record_id}", response_model=RecordOut)

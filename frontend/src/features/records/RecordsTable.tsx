@@ -15,6 +15,7 @@ import TextFilter from "@cloudscape-design/components/text-filter";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { BulkTtlModal } from "@/features/records/BulkTtlModal";
 import { ConfirmDeleteModal } from "@/components/common/ConfirmDeleteModal";
 import { useFlash } from "@/components/layout/FlashProvider";
 import { EmptyState, ErrorState } from "@/components/states/States";
@@ -70,6 +71,7 @@ export function RecordsTable({ zone }: { zone: HostedZone }) {
 
   const [selected, setSelected] = useState<DnsRecord[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const [editingTtl, setEditingTtl] = useState(false);
   const [visible, setVisible] = useState<string[]>(["name", "type", "routing", "differentiator", "alias", "value", "ttl"]);
   const filtered = !!(q || type || policy || alias);
   const editable = selected.length === 1 ? selected[0] : undefined;
@@ -156,6 +158,7 @@ export function RecordsTable({ zone }: { zone: HostedZone }) {
             actions={
               <SpaceBetween direction="horizontal" size="xs">
                 <Button disabled={!editable} onClick={() => editable && router.push(editHref(editable))}>Edit record</Button>
+                <Button disabled={selected.length === 0} onClick={() => setEditingTtl(true)}>Edit TTL</Button>
                 <Button disabled={selected.length === 0} onClick={() => setConfirming(true)}>Delete record{selected.length > 1 ? "s" : ""}</Button>
                 <Button onClick={() => router.push(`/hosted-zones/${zone.zone_id}/import`)}>Import zone file</Button>
                 <ButtonDropdown
@@ -225,6 +228,16 @@ export function RecordsTable({ zone }: { zone: HostedZone }) {
             <EmptyState title="No records found" body="This hosted zone has no records yet." actionLabel="Create record" onAction={() => router.push(`/hosted-zones/${zone.zone_id}/records/create`)} />
           )
         }
+      />
+      <BulkTtlModal
+        zoneId={zone.zone_id}
+        records={selected}
+        visible={editingTtl}
+        onDismiss={() => setEditingTtl(false)}
+        onDone={() => {
+          setEditingTtl(false);
+          setSelected([]);
+        }}
       />
       <ConfirmDeleteModal
         visible={confirming}

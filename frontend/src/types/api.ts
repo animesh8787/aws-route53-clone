@@ -96,6 +96,11 @@ export interface BulkDeleteResult {
   skipped: { id: number; reason: string }[];
 }
 
+export interface BulkTtlResult {
+  updated: number;
+  skipped: { id: number; reason: string }[];
+}
+
 export interface ImportItem {
   line: number;
   name: string;

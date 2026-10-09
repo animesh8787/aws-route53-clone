@@ -3,7 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
-import type { BulkDeleteResult, DnsRecord, Page, RecordInput } from "@/types/api";
+import type { BulkDeleteResult, BulkTtlResult, DnsRecord, Page, RecordInput } from "@/types/api";
 
 export interface RecordListParams {
   q?: string;
@@ -54,6 +54,14 @@ export function useDeleteRecords(zoneId: string) {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (ids: number[]) => api.post<BulkDeleteResult>(`/hosted-zones/${zoneId}/records/bulk-delete`, { ids }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useBulkTtl(zoneId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ ids, ttl }: { ids: number[]; ttl: number }) => api.post<BulkTtlResult>(`/hosted-zones/${zoneId}/records/bulk-ttl`, { ids, ttl }),
     onSuccess: invalidate,
   });
 }

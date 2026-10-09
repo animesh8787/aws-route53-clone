@@ -9,7 +9,7 @@ from app.core.errors import (
     ValidationFailure,
     field_error,
 )
-from app.dns.validators import parse_value
+from app.dns.validators import DnsValueError, parse_value, validate_ttl
 from app.models import DnsRecord, HealthCheck, HostedZone
 from app.repositories import record_repo
 from app.schemas.record import AliasOut, RecordIn, RecordOut
@@ -177,3 +177,24 @@ def bulk_delete(db: Session, zone: HostedZone, ids: list[int]) -> tuple[int, lis
     zone_service.refresh_record_count(db, zone)
     db.commit()
     return deleted, skipped
+
+
+def bulk_update_ttl(db: Session, zone: HostedZone, ids: list[int], ttl: int) -> tuple[int, list[dict]]:
+    """Set the TTL on many records at once. Alias records have no TTL and are skipped and reported."""
+    try:
+        validate_ttl(ttl)
+    except DnsValueError as exc:
+        raise ValidationFailure(str(exc), [field_error("ttl", str(exc))]) from exc
+    updated, skipped = 0, []
+    records = {r.id: r for r in db.scalars(select(DnsRecord).where(DnsRecord.id.in_(ids), DnsRecord.hosted_zone_id == zone.id)).unique()}
+    for record_id in ids:
+        record = records.get(record_id)
+        if record is None:
+            skipped.append({"id": record_id, "reason": "Record not found in this hosted zone."})
+        elif record.alias_target:
+            skipped.append({"id": record_id, "reason": "Alias records do not have a TTL."})
+        else:
+            record.ttl = ttl
+            updated += 1
+    db.commit()
+    return updated, skipped
