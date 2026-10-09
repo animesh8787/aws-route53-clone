@@ -47,7 +47,7 @@ export function ResourceDetailPage({ config, id }: { config: ResourceConfig; id:
         actions={
           <SpaceBetween direction="horizontal" size="xs">
             {config.detailActions?.(item, () => void refetch())}
-            {!config.readOnly && <Button onClick={() => setDeleting(true)}>Delete</Button>}
+            {!config.readOnly && !config.noDelete && <Button onClick={() => setDeleting(true)}>Delete</Button>}
             {!config.readOnly && <Button variant="primary" onClick={() => router.push(`/${config.route}/${id}/edit`)}>Edit</Button>}
           </SpaceBetween>
         }

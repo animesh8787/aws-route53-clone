@@ -52,6 +52,8 @@ def _parse(kind: ResourceKind, raw: dict) -> dict:
 
 
 def get_owned(db: Session, owner_id: int, kind: ResourceKind, public_id: str) -> Resource:
+    if kind.before_read:
+        kind.before_read(db, owner_id)
     resource = db.scalar(select(Resource).where(Resource.owner_id == owner_id, Resource.kind == kind.kind, Resource.public_id == public_id))
     if resource is None:
         raise NotFoundError(f"{kind.label} not found.")
@@ -66,6 +68,8 @@ def search(
     db: Session, owner_id: int, kind: ResourceKind, *, q: str | None, status: str | None, filters: dict[str, str],
     sort: str, order: str, page: int, page_size: int,
 ) -> tuple[list[Resource], int]:  # fmt: skip
+    if kind.before_read:
+        kind.before_read(db, owner_id)
     query = select(Resource).where(Resource.owner_id == owner_id, Resource.kind == kind.kind)
     if q:
         like = f"%{q.strip().lower()}%"
@@ -139,6 +143,8 @@ def update(db: Session, owner_id: int, kind: ResourceKind, resource: Resource, r
 
 
 def delete(db: Session, owner_id: int, kind: ResourceKind, resource: Resource) -> None:
+    if not kind.deletable:
+        raise ConflictError(f"{kind.label} records cannot be deleted.")
     if kind.guard_delete:
         kind.guard_delete(db, owner_id, resource)
     if kind.after_delete:

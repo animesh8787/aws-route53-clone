@@ -97,8 +97,10 @@ export interface ResourceConfig {
   toPayload?: (values: FormValues) => FormValues;
   /** Transform an API object into form values when editing. */
   toForm?: (item: ResourceItem) => FormValues;
-  /** Hide the create / edit buttons for read-only collections. */
+  /** Hide the create / edit / delete buttons for read-only collections. */
   readOnly?: boolean;
+  /** Hide only the delete button (the resource cannot be deleted). */
+  noDelete?: boolean;
   createLabel?: string;
   /** Lets one config use a bespoke create page route (e.g. domain registration). */
   createHref?: string;

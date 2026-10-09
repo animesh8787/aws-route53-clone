@@ -65,7 +65,7 @@ def refresh_record_count(db: Session, zone: HostedZone) -> None:
     zone.record_count = db.scalar(select(func.count()).where(DnsRecord.hosted_zone_id == zone.id)) or 0
 
 
-def create_zone(db: Session, payload: HostedZoneCreate, *, created_by: str = "Route 53", zone_id: str | None = None) -> HostedZone:
+def create_zone(db: Session, payload: HostedZoneCreate, *, created_by: str = "Route 53", zone_id: str | None = None, commit: bool = True) -> HostedZone:
     errors = []
     name = None
     try:
@@ -100,8 +100,9 @@ def create_zone(db: Session, payload: HostedZoneCreate, *, created_by: str = "Ro
         ]
     )
     refresh_record_count(db, zone)
-    db.commit()
-    db.refresh(zone)
+    if commit:
+        db.commit()
+        db.refresh(zone)
     return zone
 
 

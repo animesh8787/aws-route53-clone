@@ -170,8 +170,8 @@ test("unauthenticated users are redirected and coming-soon pages render", async 
   await page.goto("/hosted-zones");
   await expect(page).toHaveURL(/\/login/);
   await login(page);
-  await page.goto("/registered-domains");
-  await expect(page.getByText("Registered domains is coming soon")).toBeVisible();
+  await page.goto("/resolver");
+  await expect(page.getByText("Resolver VPCs is coming soon")).toBeVisible();
 });
 
 test("every record type, alias and weighted routing can be created through the editor", async ({ page }) => {

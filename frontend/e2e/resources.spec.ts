@@ -152,3 +152,53 @@ test("Cancel on a valid form leaves without saving", async ({ page }) => {
   await page.getByPlaceholder(/Filter profiles/).fill("never-saved");
   await expect(page.getByText("No matches")).toBeVisible();
 });
+
+test("domains: search, register, edit, renew, request history", async ({ page }) => {
+  await login(page);
+  await page.goto("/registered-domains");
+  await expect(page.getByRole("link", { name: "mycompany.dev" }).first()).toBeVisible();
+  await expect(page.getByText(/25 days left|2[0-9] days left/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Register domain" }).first().click();
+  await page.getByRole("textbox", { name: "Domain name" }).fill("e2edomainidea");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByText("Availability", { exact: true })).toBeVisible();
+  await page.locator('tr input[type="radio"]:not([disabled])').first().check({ force: true });
+  await page.getByRole("button", { name: "Next" }).click();
+
+  // contact validation, then valid details
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("First name is required.")).toBeVisible();
+  await page.getByRole("textbox", { name: "First name" }).fill("Test");
+  await page.getByRole("textbox", { name: "Last name" }).fill("User");
+  await page.getByRole("textbox", { name: "Email address" }).fill("test@example.org");
+  await page.getByRole("textbox", { name: "Phone number" }).fill("+1 555 0100");
+  await page.getByRole("textbox", { name: "Address", exact: true }).fill("1 Main St");
+  await page.getByRole("textbox", { name: "City" }).fill("Springfield");
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Order summary", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Register domain (simulated)" }).click();
+  await expect(page.getByText(/was registered \(simulated\)/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^e2edomainidea\./ })).toBeVisible();
+
+  // edit settings
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByText("Auto-renew", { exact: true }).first().click();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText(/was updated successfully/)).toBeVisible();
+
+  // renew
+  await page.getByRole("button", { name: "Renew domain" }).click();
+  await page.getByRole("spinbutton", { name: "Renewal years" }).fill("2");
+  await page.getByRole("dialog").getByRole("button", { name: "Renew", exact: true }).click();
+  await expect(page.getByText(/was renewed for 2 year/)).toBeVisible();
+
+  // transfer out requires the lock to be off
+  await page.getByRole("button", { name: "Transfer out" }).click();
+  await expect(page.getByText(/transfer lock/i).first()).toBeVisible();
+
+  // the registration created a hosted zone and requests
+  await page.goto("/domain-requests");
+  await expect(page.getByRole("row", { name: /Register domain.*e2edomainidea/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Renew domain.*e2edomainidea/ })).toBeVisible();
+});

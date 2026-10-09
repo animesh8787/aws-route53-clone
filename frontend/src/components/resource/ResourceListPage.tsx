@@ -107,7 +107,7 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
               <SpaceBetween direction="horizontal" size="xs">
                 <Button disabled={!current} onClick={() => current && router.push(detailHref(current))}>View details</Button>
                 {!config.readOnly && <Button disabled={!current} onClick={() => current && router.push(`${detailHref(current)}/edit`)}>Edit</Button>}
-                {!config.readOnly && <Button disabled={!current} onClick={() => setDeleting(current ?? null)}>Delete</Button>}
+                {!config.readOnly && !config.noDelete && <Button disabled={!current} onClick={() => setDeleting(current ?? null)}>Delete</Button>}
                 {!config.readOnly && <Button variant="primary" onClick={() => router.push(createHref)}>{config.createLabel ?? `Create ${config.singular}`}</Button>}
               </SpaceBetween>
             }

@@ -1,7 +1,7 @@
 """Development seed / reset command: ``python -m app.seed [--reset]``."""
 import argparse
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine, insert, select
 from sqlalchemy.orm import Session
@@ -179,6 +179,14 @@ def _seed_console_resources(db: Session, owner_id: int) -> None:
         db, owner_id, kind("policy_record"),
         {"zone_id": example.zone_id, "dns_name": "policy", "policy_id": policy.public_id, "policy_version": 1, "ttl": 60},
     )  # fmt: skip
+    contact = {
+        "first_name": "Demo", "last_name": "User", "organization": "Demo Company", "email": "demo@example.com", "phone": "+1 206 555 0100",
+        "address_line": "410 Terry Ave N", "city": "Seattle", "state": "WA", "zip_code": "98109", "country": "US",
+    }  # fmt: skip
+    resource_service.create(db, owner_id, kind("domain"), {"name": "mycompany.dev", "years": 2, "contact": contact}, public_id="dom-0a1b2c3d4e5f6a7b8")
+    expiring = resource_service.create(db, owner_id, kind("domain"), {"name": "acme-corp.io", "years": 1, "auto_renew": False, "transfer_lock": False, "contact": contact})
+    expiring.data = {**expiring.data, "expires_at": (datetime.utcnow() + timedelta(days=25)).isoformat(timespec="seconds")}
+    db.commit()
     resource_service.create(
         db, owner_id, kind("profile"),
         {"name": "production-dns", "description": "DNS settings shared by production VPCs", "vpc_ids": ["vpc-0a1b2c3d4e5f60789"], "zone_ids": ["Z1R8UBAEXAMPLE6PRIV"]},

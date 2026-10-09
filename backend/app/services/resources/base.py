@@ -31,4 +31,6 @@ class ResourceKind:
     after_update: Hook | None = None
     present: Callable[[Session, Resource, dict], dict] | None = None  # adds computed fields to the API output
     after_delete: Hook | None = None
+    before_read: Callable[[Session, int], None] | None = None  # e.g. settle time-based statuses before listing
+    deletable: bool = True
     extra: dict = field(default_factory=dict)
