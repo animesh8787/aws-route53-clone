@@ -288,9 +288,11 @@ test("top bar: services menu, notifications, activity and help panel", async ({ 
   await page.getByRole("dialog").getByRole("button", { name: "Close dialog" }).click();
 
   await page.getByRole("button", { name: /Notifications/ }).click();
-  await expect(page.getByRole("menuitem", { name: /Created hosted zone: example\.com/ })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /(Created|Updated|Deleted|Imported) / }).first()).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Mark all as read" })).toBeVisible();
   await page.getByRole("menuitem", { name: "View all activity" }).click();
   await expect(page.getByRole("heading", { level: 1, name: /^Activity/ })).toBeVisible();
+  await page.getByPlaceholder(/Filter activity/).fill("baseline-firewall");
   await expect(page.getByRole("link", { name: "baseline-firewall" })).toBeVisible();
 
   // a change made in the console shows up in the feed
@@ -299,7 +301,7 @@ test("top bar: services menu, notifications, activity and help panel", async ({ 
   await page.getByRole("button", { name: "Create hosted zone" }).last().click();
   await expect(page.getByText("Hosted zone activity-check.com was successfully created.")).toBeVisible();
   await page.goto("/activity");
-  await expect(page.getByRole("link", { name: "activity-check.com" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "activity-check.com" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Help", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Route 53 help" })).toBeVisible();

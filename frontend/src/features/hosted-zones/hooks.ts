@@ -52,9 +52,16 @@ export function useDeleteZone() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ id, force }: { id: string; force: boolean }) => api.delete<{ detail: string }>(`/hosted-zones/${id}`, { force }),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: zoneKeys.all });
-      client.invalidateQueries({ queryKey: ["dashboard"] });
+    onSuccess: (_result, { id }) => {
+      // Queries scoped to the deleted zone (detail, DNSSEC, records) would 404 and unmount the page
+      // before the success message and redirect run, so they are only marked stale.
+      const ofDeletedZone = (key: readonly unknown[]) => key[2] === id && (key[0] === "hosted-zones" || key[0] === "records");
+      client.invalidateQueries({ predicate: (q) => ofDeletedZone(q.queryKey), refetchType: "none" });
+      return Promise.all([
+        client.invalidateQueries({ queryKey: zoneKeys.all, predicate: (q) => !ofDeletedZone(q.queryKey) }),
+        client.invalidateQueries({ queryKey: ["dashboard"] }),
+        client.invalidateQueries({ queryKey: ["activity"] }),
+      ]);
     },
   });
 }

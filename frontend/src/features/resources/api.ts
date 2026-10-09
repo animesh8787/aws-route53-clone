@@ -59,10 +59,22 @@ export function useUpdateResource(config: ResourceConfig, id: string) {
 }
 
 export function useDeleteResource(config: ResourceConfig) {
-  const invalidate = useInvalidateAll();
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (item: ResourceItem) => api.delete<{ detail: string }>(`${config.api}/${idOf(config, item)}`),
-    onSuccess: invalidate,
+    onSuccess: (_result, item) => {
+      // Do not refetch the deleted item's own detail query: it would 404 and unmount the page
+      // (and the pending success message / redirect) before they run.
+      const detailKey = resourceKeys.detail(config.api, idOf(config, item));
+      client.invalidateQueries({ queryKey: detailKey, refetchType: "none" });
+      const isDeletedDetail = (key: readonly unknown[]) => key.length === detailKey.length && key.every((part, i) => part === detailKey[i]);
+      return Promise.all([
+        client.invalidateQueries({ queryKey: ["resource"], predicate: (q) => !isDeletedDetail(q.queryKey) }),
+        client.invalidateQueries({ queryKey: ["dashboard"] }),
+        client.invalidateQueries({ queryKey: ["activity"] }),
+        client.invalidateQueries({ queryKey: ["records"] }),
+      ]);
+    },
   });
 }
 
