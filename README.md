@@ -265,7 +265,7 @@ cd frontend && PW_CHANNEL=chrome npm run test:e2e   # Playwright, 22 tests; omit
 - **End to end (Playwright, production build, throw-away database):** sign-up validation and sample data, password change and sessions, lockout, the full hosted-zone and record workflow with persistence across sessions, every record type through the editor, BIND import/export, every console area (create, validate, edit, delete), the top bar, billing, tags and DNSSEC, and a smoke test that opens every navigation entry.
 
 ## Deployment
-Target: **Vercel** (frontend) + **Render free web service** (API) + **Turso** (hosted SQLite), all free. Step-by-step instructions are in [`deployment/DEPLOYMENT.md`](deployment/DEPLOYMENT.md); the account-bound steps are listed in [`HUMAN_ACTIONS_REQUIRED.md`](HUMAN_ACTIONS_REQUIRED.md). The browser only talks to the Vercel origin (`/api/*` is rewritten to the API), so the session cookie stays first-party.
+Target: **Vercel** (frontend) + **Render free web service** (API) + **Turso** (hosted SQLite), all free. Step-by-step instructions are in [`deployment/DEPLOYMENT.md`](deployment/DEPLOYMENT.md). The browser only talks to the Vercel origin (`/api/*` is rewritten to the API), so the session cookie stays first-party.
 
 ## Known limitations
 - **Durability on Render's free plan depends on Turso.** Render's free plan has no persistent disk, so without a Turso database the SQLite file is recreated and re-seeded on every restart. Free services also sleep when idle; the first request can take up to a minute.
