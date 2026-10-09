@@ -1,5 +1,6 @@
 """FastAPI application factory."""
 import logging
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -39,12 +40,20 @@ def _friendly_loc(loc: tuple) -> str:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    Base.metadata.create_all(engine)
-    if get_settings().seed_on_start:
-        from app.seed import seed_all
+    started = time.monotonic()
+    try:
+        logger.info("Startup: creating tables")
+        Base.metadata.create_all(engine)
+        logger.info("Startup: tables ready (%.1fs)", time.monotonic() - started)
+        if get_settings().seed_on_start:
+            from app.seed import seed_all
 
-        with SessionLocal() as db:
-            seed_all(db)
+            with SessionLocal() as db:
+                seed_all(db)
+            logger.info("Startup: seed check finished (%.1fs)", time.monotonic() - started)
+    except Exception:
+        logger.exception("Startup failed after %.1fs", time.monotonic() - started)
+        raise
     yield
 
 
