@@ -1,22 +1,17 @@
 "use client";
 
-import Alert from "@cloudscape-design/components/alert";
-import Box from "@cloudscape-design/components/box";
-import Button from "@cloudscape-design/components/button";
-import Container from "@cloudscape-design/components/container";
-import Form from "@cloudscape-design/components/form";
-import FormField from "@cloudscape-design/components/form-field";
-import Header from "@cloudscape-design/components/header";
-import Input from "@cloudscape-design/components/input";
-import Link from "@cloudscape-design/components/link";
-import SpaceBetween from "@cloudscape-design/components/space-between";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { useLogin } from "@/features/auth/hooks";
 import { ApiError, api } from "@/lib/api";
-import { AWS_LOGO_DARK } from "@/lib/aws-logo";
+import { AWS_LOGO_WHITE } from "@/lib/aws-logo";
 import type { DashboardSummary } from "@/types/api";
+
+import "../signin.css";
+
+const PROVIDERS = ["Google", "GitHub", "Apple", "Amazon", "IAM user"];
 
 function safeNext(value: string | null): string | null {
   return value && value.startsWith("/") && !value.startsWith("//") ? value : null;
@@ -39,6 +34,7 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
+  const [provider, setProvider] = useState<string | null>(null);
 
   const emailError = touched && !email.trim() ? "Email address is required." : undefined;
   const passwordError = touched && !password ? "Password is required." : undefined;
@@ -53,75 +49,78 @@ function LoginForm() {
   const serverError = login.error instanceof ApiError ? login.error.detail : login.error ? "Unable to sign in. Please try again." : null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background-layout-main, #f2f3f3)", display: "grid", placeItems: "center", padding: 16 }}>
-      <main style={{ width: "100%", maxWidth: 420 }}>
-        <SpaceBetween size="l">
+    <div className="si">
+      <header className="si-top">
+        <Link href="/" aria-label="Amazon Route 53 home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={AWS_LOGO_DARK} alt="Amazon Web Services" height={44} style={{ display: "block", margin: "0 auto" }} />
-          <Container header={<Header variant="h1">Sign in</Header>}>
-            <form onSubmit={submit} noValidate>
-              <Form
-                actions={
-                  <Button variant="primary" formAction="submit" loading={login.isPending} fullWidth>
-                    Sign in
-                  </Button>
-                }
-              >
-                <SpaceBetween size="m">
-                  {serverError && (
-                    <Alert type="error" header={login.error instanceof ApiError && login.error.status === 429 ? "Too many attempts" : "Authentication failed"}>
-                      {serverError}
-                    </Alert>
-                  )}
-                  <FormField label="Email address" errorText={emailError}>
-                    <Input
-                      type="email"
-                      autoComplete="username"
-                      autoFocus
-                      value={email}
-                      onChange={({ detail }) => setEmail(detail.value)}
-                      placeholder="demo@example.com"
-                      invalid={!!emailError}
-                    />
-                  </FormField>
-                  <FormField label="Password" errorText={passwordError}>
-                    <Input
-                      type="password"
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={({ detail }) => setPassword(detail.value)}
-                      invalid={!!passwordError}
-                    />
-                  </FormField>
-                </SpaceBetween>
-              </Form>
-            </form>
-          </Container>
-          <Box textAlign="center">
-            New to this console? <Link href="/signup" onFollow={(e) => { e.preventDefault(); router.push("/signup"); }}>Create an account</Link>
-          </Box>
-          <Container>
-            <SpaceBetween size="xxs">
-              <Box variant="h3">Demo account</Box>
-              <Box color="text-body-secondary" fontSize="body-s">
-                This is a mocked sign-in for the Route 53 console clone.
-              </Box>
-              <Box fontSize="body-s">
-                Email: <Box variant="code">demo@example.com</Box> &nbsp; Password: <Box variant="code">password</Box>
-              </Box>
-              <Button
-                variant="link"
-                onClick={() => {
-                  setEmail("demo@example.com");
-                  setPassword("password");
-                }}
-              >
-                Fill demo credentials
-              </Button>
-            </SpaceBetween>
-          </Container>
-        </SpaceBetween>
+          <img src={AWS_LOGO_WHITE} alt="Amazon Web Services" height={44} />
+        </Link>
+        <div className="si-top-right">
+          <span className="si-chip">English ▾</span>
+          <Link href="/signup" className="si-chip">
+            Sign up
+          </Link>
+        </div>
+      </header>
+      <main className="si-card">
+        <h1>Sign in to AWS</h1>
+        <form onSubmit={submit} noValidate>
+          {serverError && (
+            <div className="si-alert" role="alert">
+              <b>{login.error instanceof ApiError && login.error.status === 429 ? "Too many attempts" : "Authentication failed"}</b>
+              <span>{serverError}</span>
+            </div>
+          )}
+          <label htmlFor="si-email">Email address</label>
+          <input id="si-email" type="email" autoComplete="username" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="demo@example.com" aria-invalid={!!emailError} />
+          {emailError && <p className="si-err">{emailError}</p>}
+          <label htmlFor="si-password">Password</label>
+          <input id="si-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={!!passwordError} />
+          {passwordError && <p className="si-err">{passwordError}</p>}
+          <button type="submit" className="si-primary" disabled={login.isPending}>
+            {login.isPending ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+        <div className="si-or">
+          <span>OR</span>
+        </div>
+        <div className="si-providers">
+          {PROVIDERS.map((p) => (
+            <button key={p} type="button" onClick={() => setProvider(p)}>
+              {p}
+            </button>
+          ))}
+        </div>
+        {provider && (
+          <p className="si-info" role="status">
+            Signing in with {provider} is not available in this console clone. Use your email address and password, or the demo account below.
+          </p>
+        )}
+        <p className="si-terms">
+          By continuing and signing in, you acknowledge that this is an educational clone of the AWS console with simulated data. New users can <Link href="/signup">create an account</Link> with an
+          email address.
+        </p>
+        <details className="si-help">
+          <summary>Need help signing in?</summary>
+          <p>
+            Demo account: <code>demo@example.com</code> with password <code>password</code>.
+          </p>
+          <button
+            type="button"
+            className="si-link"
+            onClick={() => {
+              setEmail("demo@example.com");
+              setPassword("password");
+            }}
+          >
+            Fill demo credentials
+          </button>
+        </details>
       </main>
+      <footer className="si-foot">
+        <Link href="/">Back to the Route 53 page</Link>
+        <span>© 2026 Route 53 console clone · educational project · not affiliated with Amazon Web Services</span>
+      </footer>
     </div>
   );
 }

@@ -1,0 +1,37 @@
+/* Sign-in page: dark card on a gradient, like the current AWS sign-in */
+.si { min-height: 100vh; display: flex; flex-direction: column; color: #fff; font-family: "Open Sans", "Helvetica Neue", Arial, sans-serif; background: radial-gradient(ellipse at 85% 75%, #c3005a 0, transparent 40%), radial-gradient(ellipse at 100% 100%, #7a5200 0, transparent 40%), radial-gradient(ellipse at 0% 0%, #6a00c8 0, transparent 55%), linear-gradient(180deg, #5200b8 0%, #4a0a8c 55%, #5a1220 100%); }
+.si * { box-sizing: border-box; }
+.si-top { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 28px; }
+.si-top-right { display: flex; gap: 14px; }
+.si-chip { background: #111; color: #fff; border: 1px solid #333; border-radius: 6px; padding: 10px 16px; font-size: 14px; font-weight: 700; text-decoration: none; }
+.si-card { width: min(880px, calc(100% - 32px)); margin: 28px auto auto; background: #151515; padding: 36px 40px 40px; }
+.si-card h1 { margin: 0 0 28px; font-size: 64px; line-height: 1.05; font-weight: 700; letter-spacing: -0.02em; }
+.si-card label { display: block; margin: 16px 0 8px; font-size: 14px; font-weight: 700; }
+.si-card input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid #5c5c5c; border-radius: 4px; background: #0b0b0b; color: #fff; font: inherit; font-size: 16px; }
+.si-card input:focus-visible, .si-card button:focus-visible, .si-help summary:focus-visible { outline: 2px solid #8ab4ff; outline-offset: 2px; }
+.si-card input[aria-invalid="true"] { border-color: #ff7a7a; }
+.si-err { margin: 6px 0 0; color: #ff9d9d; font-size: 14px; }
+.si-primary { width: 100%; height: 42px; margin-top: 20px; border: 0; border-radius: 4px; background: #e6e6e6; color: #111; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.si-primary:hover { background: #fff; }
+.si-primary:disabled { opacity: 0.7; cursor: progress; }
+.si-alert { display: grid; gap: 4px; border: 1px solid #ff7a7a; border-left-width: 6px; background: #2a1414; padding: 12px 14px; font-size: 14px; }
+.si-or { display: flex; align-items: center; gap: 16px; margin: 28px 0 24px; color: #c8c8c8; font-size: 14px; }
+.si-or::before, .si-or::after { content: ""; flex: 1; height: 1px; background: #3a3a3a; }
+.si-providers { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.si-providers button { height: 42px; border: 1px solid #5c5c5c; border-radius: 4px; background: #1b1b1b; color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.si-providers button:hover { background: #2a2a2a; }
+.si-info { margin: 16px 0 0; padding: 10px 14px; border-left: 4px solid #6aa3ff; background: #101a2b; font-size: 14px; line-height: 1.5; }
+.si-terms { margin: 22px 0 0; color: #d0d0d0; font-size: 15px; line-height: 1.7; }
+.si-terms a, .si-foot a { color: #fff; text-underline-offset: 3px; }
+.si-help { margin-top: 28px; border-top: 1px solid #3a3a3a; padding-top: 22px; }
+.si-help summary { cursor: pointer; font-size: 18px; font-weight: 700; }
+.si-help p { margin: 14px 0 8px; color: #d0d0d0; font-size: 14px; }
+.si-help code { background: #262626; padding: 2px 6px; border-radius: 3px; }
+.si-link { background: none; border: 0; padding: 0; color: #8ab4ff; font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; }
+.si-foot { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 40px; padding: 12px 24px; background: #161616; font-size: 13px; }
+@media (max-width: 760px) {
+  .si-card { padding: 24px 20px 28px; margin-top: 12px; }
+  .si-card h1 { font-size: 40px; }
+  .si-providers { grid-template-columns: 1fr 1fr; }
+  .si-top { padding: 16px; }
+}
