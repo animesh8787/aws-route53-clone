@@ -462,3 +462,16 @@ test("phone layout: no sideways scrolling and menus stay on screen", async ({ pa
   const box = await page.getByRole("heading", { name: "Recently visited" }).last().boundingBox();
   expect(box && box.x + box.width).toBeLessThanOrEqual(390);
 });
+
+test("public landing page, then the console's Route 53 links open Home", async ({ page, context }) => {
+  await context.clearCookies();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Amazon Route 53 - DNS service" })).toBeVisible();
+  await page.getByRole("link", { name: "Sign in to console" }).click();
+  await expect(page).toHaveURL(/\/login/);
+  await login(page);
+  await page.getByRole("navigation", { name: "Breadcrumbs" }).getByRole("link", { name: "Route 53" }).click();
+  await expect(page).toHaveURL(/\/home$/);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/dashboard$/);
+});

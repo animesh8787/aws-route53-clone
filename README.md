@@ -40,8 +40,9 @@ A functional clone of the **AWS Route 53 management console**: hosted zones and 
 ## Screenshots
 | | |
 |---|---|
-| ![Login](docs/screenshots/01-login.png) Sign in | ![Sign up](docs/screenshots/01b-signup.png) Sign up with live password rules |
-| ![Dashboard](docs/screenshots/02-dashboard.png) Dashboard | ![Hosted zones](docs/screenshots/03-hosted-zones.png) Hosted zones |
+| ![Landing](docs/screenshots/00-landing.png) Public landing page | ![Login](docs/screenshots/01-login.png) Sign in |
+| ![Sign up](docs/screenshots/01b-signup.png) Sign up with live password rules | ![Dashboard](docs/screenshots/02-dashboard.png) Dashboard |
+| ![Hosted zones](docs/screenshots/03-hosted-zones.png) Hosted zones |
 | ![Create A](docs/screenshots/07-create-a-record.png) Record editor | ![Create MX](docs/screenshots/08-create-mx-record.png) Structured MX editor |
 | ![Weighted routing](docs/screenshots/09c-weighted-routing.png) Routing policy fields | ![Search and filter](docs/screenshots/10-search-filter.png) Search and filter |
 | ![Import](docs/screenshots/12-import-preview.png) BIND import preview | ![Test record](docs/screenshots/15-test-record-weighted.png) DNS simulator |
@@ -259,7 +260,7 @@ Supported: `$ORIGIN`, `$TTL` (including `1h`, `2d`), `@`, relative and absolute 
 cd backend && pytest -q                  # 123 tests
 cd backend && ruff check app tests
 cd frontend && npm run typecheck && npm run lint
-cd frontend && PW_CHANNEL=chrome npm run test:e2e   # Playwright, 23 tests; omit PW_CHANNEL to use bundled Chromium (npx playwright install chromium)
+cd frontend && PW_CHANNEL=chrome npm run test:e2e   # Playwright, 24 tests; omit PW_CHANNEL to use bundled Chromium (npx playwright install chromium)
 ```
 - **Backend (pytest, isolated SQLite file):** authentication, lockout, rate limits, CSRF, sessions, password change, account isolation across every endpoint, zone and record CRUD, system records, all record types (valid and invalid), conflicts, routing policies, alias, IP-based routing, traffic policies and policy records, BIND import/export, resolver behaviour for every policy plus firewall, forwarding and private zones, domains, health checks, billing, activity, tags, DNSSEC, seed data.
 - **End to end (Playwright, production build, throw-away database):** sign-up validation and sample data, password change and sessions, lockout, the full hosted-zone and record workflow with persistence across sessions, every record type through the editor, BIND import/export, every console area (create, validate, edit, delete), the top bar, billing, tags and DNSSEC, and a smoke test that opens every navigation entry.

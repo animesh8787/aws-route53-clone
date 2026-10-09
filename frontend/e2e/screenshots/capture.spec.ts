@@ -25,6 +25,8 @@ async function login(page: Page) {
 test("capture documentation screenshots", async ({ page }) => {
   test.setTimeout(300_000);
 
+  await page.goto("/");
+  await shot(page, "00-landing");
   await page.goto("/login");
   await shot(page, "01-login");
   await page.goto("/signup");

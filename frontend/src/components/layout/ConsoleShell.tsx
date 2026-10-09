@@ -135,8 +135,8 @@ function ConsoleShellInner({ children }: { children: React.ReactNode }) {
               }}
               navigationOpen={navOpen}
               onNavigationChange={({ detail }) => setNavOpen(detail.open)}
-              navigation={<SideNavigation header={{ text: "Route 53", href: "/dashboard" }} activeHref={activeHref(pathname)} items={NAV_ITEMS} onFollow={follow} />}
-              breadcrumbs={<BreadcrumbGroup items={[{ text: "Route 53", href: "/dashboard" }, ...chromeState.chrome.breadcrumbs]} onFollow={follow} ariaLabel="Breadcrumbs" />}
+              navigation={<SideNavigation header={{ text: "Route 53", href: "/home" }} activeHref={activeHref(pathname)} items={NAV_ITEMS} onFollow={follow} />}
+              breadcrumbs={<BreadcrumbGroup items={[{ text: "Route 53", href: "/home" }, ...chromeState.chrome.breadcrumbs]} onFollow={follow} ariaLabel="Breadcrumbs" />}
               notifications={<FlashMessages />}
               splitPanel={
                 splitPanel ? (
