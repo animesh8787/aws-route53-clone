@@ -17,9 +17,13 @@ def make_engine(url: str) -> Engine:
     connect_args: dict = {}
     if is_sqlite:
         connect_args["check_same_thread"] = False
-    elif is_libsql and (token := get_settings().turso_auth_token):
-        connect_args["auth_token"] = token
-    engine = create_engine(url, connect_args=connect_args)
+    kwargs: dict = {}
+    if is_libsql:
+        if token := get_settings().turso_auth_token:
+            connect_args["auth_token"] = token
+        # Remote streams are closed by the server when idle; test a connection before reuse.
+        kwargs.update(pool_pre_ping=True, pool_recycle=240)
+    engine = create_engine(url, connect_args=connect_args, **kwargs)
     if is_sqlite or is_libsql:
 
         @event.listens_for(engine, "connect")

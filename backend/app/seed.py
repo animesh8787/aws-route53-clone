@@ -2,13 +2,13 @@
 import argparse
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import create_engine, insert, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.session import Base, SessionLocal, engine
-from app.models import HealthCheck, HostedZone, User
+from app.models import DnsRecord, HealthCheck, HostedZone, User, VpcAssociation
 from app.schemas.hosted_zone import HostedZoneCreate, VpcIn
 from app.schemas.record import AliasIn, RecordIn
 from app.services import record_service, zone_service
@@ -100,10 +100,8 @@ def _seed_simple(db: Session, zone: HostedZone, host_ip: str) -> None:
     _add(db, zone, "@", "MX", ["10 mx1." + zone.name])
 
 
-def seed_all(db: Session) -> None:
-    ensure_user(db)
-    if db.scalar(select(HostedZone.id).limit(1)) is not None:
-        return
+def _build_demo_data(db: Session) -> None:
+    """Create the demo zones/records through the normal services (full validation)."""
     seed_health_checks(db)
     for name, kind, comment, zone_id in DEMO_ZONES:
         vpc = VpcIn(vpc_id="vpc-0a1b2c3d4e5f60789", region="us-east-1") if kind == "private" else None
@@ -128,6 +126,37 @@ def seed_all(db: Session) -> None:
             created_by="demo-user",
         )
         _seed_simple(db, zone, f"203.0.113.{index + 100}")
+
+
+_COPY_ORDER = (HealthCheck, HostedZone, VpcAssociation, DnsRecord)
+_CHUNK = 100
+
+
+def seed_all(db: Session) -> None:
+    """Seed demo data once.
+
+    The data is built in a throw-away in-memory SQLite database (so every record goes through the
+    real validation rules) and then copied into the target database with a handful of bulk
+    INSERTs in one transaction. A remote database such as Turso charges a network round trip per
+    statement, so seeding record-by-record there takes minutes and can leave half a dataset.
+    """
+    ensure_user(db)
+    if db.scalar(select(HostedZone.id).limit(1)) is not None:
+        return
+
+    scratch = create_engine("sqlite://")
+    Base.metadata.create_all(scratch)
+    with Session(scratch) as mem:
+        _build_demo_data(mem)
+        mem.commit()
+        rows = {m: [dict(r._mapping) for r in mem.execute(m.__table__.select())] for m in _COPY_ORDER}
+
+    existing_health = set(db.scalars(select(HealthCheck.health_check_id)))
+    rows[HealthCheck] = [r for r in rows[HealthCheck] if r["health_check_id"] not in existing_health]
+    for model in _COPY_ORDER:
+        for start in range(0, len(rows[model]), _CHUNK):
+            db.execute(insert(model.__table__).values(rows[model][start : start + _CHUNK]))
+    db.commit()
     logger.info("Seeded demo data.")
 
 
