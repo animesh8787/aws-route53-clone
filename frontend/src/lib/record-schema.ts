@@ -39,6 +39,8 @@ export function buildRecordSchema(zoneName: string) {
       geoContinent: z.string(),
       geoCountry: z.string(),
       geoSubdivision: z.string(),
+      cidrCollectionId: z.string(),
+      cidrLocation: z.string(),
       healthCheckId: z.string(),
     })
     .superRefine((v, ctx) => {
@@ -59,6 +61,10 @@ export function buildRecordSchema(zoneName: string) {
         else if (f.setIdentifier.length > 128) add(["setIdentifier"], "Record ID cannot exceed 128 characters.");
       }
       if (f.routingPolicy === "weighted") add(["weight"], validateInt(f.weight, "Weight", 0, 255));
+      if (f.routingPolicy === "ipbased") {
+        if (!f.cidrCollectionId) add(["cidrCollectionId"], "Choose a CIDR collection.");
+        if (!f.cidrLocation) add(["cidrLocation"], "Choose a location, or Default.");
+      }
       if (f.routingPolicy === "geolocation" && f.geoKind === "country" && f.geoCountry === "US" && f.geoSubdivision.trim()) {
         if (!/^[A-Za-z0-9]{1,3}$/.test(f.geoSubdivision.trim())) add(["geoSubdivision"], "Use a 1-3 character state code, for example CA.");
       }

@@ -36,6 +36,7 @@ export function FieldRenderer({ spec, value, values, error, editing, onChange, o
   const loaded = useOptions(source);
   const options: Option[] = spec.type === "select" || spec.type === "multiselect" ? (spec.options ?? loaded.options) : [];
   const disabled = !!spec.disabledOnEdit && editing;
+  const shownError = error ? <span style={{ whiteSpace: "pre-line" }}>{error}</span> : undefined;
 
   let control: React.ReactNode;
   switch (spec.type) {
@@ -133,15 +134,17 @@ export function FieldRenderer({ spec, value, values, error, editing, onChange, o
       break;
   }
 
+  // Custom fields draw their own label, help text and error.
+  if (spec.type === "custom") return <>{control}</>;
   if (spec.type === "toggle") {
     return (
-      <FormField description={spec.description} errorText={error} stretch>
+      <FormField description={spec.description} errorText={shownError} stretch>
         {control}
       </FormField>
     );
   }
   return (
-    <FormField label={label(spec)} description={spec.description} constraintText={spec.constraint} errorText={error} stretch>
+    <FormField label={label(spec)} description={spec.description} constraintText={spec.constraint} errorText={shownError} stretch>
       {control}
     </FormField>
   );

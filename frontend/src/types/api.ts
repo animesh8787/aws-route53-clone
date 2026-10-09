@@ -1,5 +1,5 @@
 export type RecordType = "A" | "AAAA" | "CAA" | "CNAME" | "MX" | "NS" | "PTR" | "SRV" | "TXT" | "SOA";
-export type RoutingPolicy = "simple" | "weighted" | "latency" | "failover" | "geolocation" | "multivalue";
+export type RoutingPolicy = "simple" | "weighted" | "latency" | "failover" | "geolocation" | "multivalue" | "ipbased";
 export type ZoneType = "public" | "private";
 export type AliasTargetType = "cloudfront" | "elb" | "s3-website" | "api-gateway" | "record";
 
@@ -67,6 +67,9 @@ export interface DnsRecord {
   geo_continent: string | null;
   geo_country: string | null;
   geo_subdivision: string | null;
+  cidr_collection_id: string | null;
+  cidr_location: string | null;
+  policy_record_id: string | null;
   alias: Alias | null;
   health_check_id: string | null;
   is_system: boolean;
@@ -87,6 +90,8 @@ export interface RecordInput {
   geo_continent: string | null;
   geo_country: string | null;
   geo_subdivision: string | null;
+  cidr_collection_id: string | null;
+  cidr_location: string | null;
   alias: { target: string; target_type: AliasTargetType; evaluate_target_health: boolean } | null;
   health_check_id: string | null;
 }

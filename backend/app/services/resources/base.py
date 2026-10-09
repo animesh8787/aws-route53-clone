@@ -28,5 +28,7 @@ class ResourceKind:
     validate: Validator | None = None
     guard_delete: Guard | None = None
     after_create: Hook | None = None
+    after_update: Hook | None = None
+    present: Callable[[Session, Resource, dict], dict] | None = None  # adds computed fields to the API output
     after_delete: Hook | None = None
     extra: dict = field(default_factory=dict)

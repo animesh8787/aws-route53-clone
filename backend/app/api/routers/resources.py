@@ -30,26 +30,26 @@ def list_resources(
     spec = get_kind(kind)
     filters = {k.removeprefix("filter_"): v for k, v in request.query_params.items() if k.startswith("filter_")}
     rows, total = service.search(db, user.id, spec, q=q, status=status, filters=filters, sort=sort, order=order, page=page, page_size=page_size)
-    return Page(items=[service.to_out(r) for r in rows], total=total, page=page, page_size=page_size, pages=page_count(total, page_size))
+    return Page(items=[service.to_out(r, db) for r in rows], total=total, page=page, page_size=page_size, pages=page_count(total, page_size))
 
 
 @router.post("/{kind}", response_model=dict[str, Any], status_code=201)
 def create_resource(kind: str, body: dict[str, Any] = Body(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     spec = get_kind(kind)
-    return service.to_out(service.create(db, user.id, spec, body))
+    return service.to_out(service.create(db, user.id, spec, body), db)
 
 
 @router.get("/{kind}/{public_id}", response_model=dict[str, Any])
 def get_resource(kind: str, public_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     spec = get_kind(kind)
-    return service.to_out(service.get_owned(db, user.id, spec, public_id))
+    return service.to_out(service.get_owned(db, user.id, spec, public_id), db)
 
 
 @router.put("/{kind}/{public_id}", response_model=dict[str, Any])
 def update_resource(kind: str, public_id: str, body: dict[str, Any] = Body(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     spec = get_kind(kind)
     resource = service.get_owned(db, user.id, spec, public_id)
-    return service.to_out(service.update(db, user.id, spec, resource, body))
+    return service.to_out(service.update(db, user.id, spec, resource, body), db)
 
 
 @router.delete("/{kind}/{public_id}", response_model=Message)

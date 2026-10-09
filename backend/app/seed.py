@@ -9,10 +9,12 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.session import Base, SessionLocal, engine
-from app.models import DnsRecord, HealthCheck, HostedZone, User, VpcAssociation
+from app.models import DnsRecord, HealthCheck, HostedZone, Resource, User, VpcAssociation
 from app.schemas.hosted_zone import HostedZoneCreate, VpcIn
 from app.schemas.record import AliasIn, RecordIn
 from app.services import record_service, zone_service
+from app.services.resources import service as resource_service
+from app.services.resources.registry import get_kind
 
 logger = logging.getLogger("route53.seed")
 
@@ -138,9 +140,52 @@ def _build_demo_data(db: Session, owner_id: int) -> None:
             created_by="demo-user",
         )
         _seed_simple(db, zone, f"203.0.113.{index + 100}")
+    _seed_console_resources(db, owner_id)
 
 
-_COPY_ORDER = (HealthCheck, HostedZone, VpcAssociation, DnsRecord)
+def _seed_console_resources(db: Session, owner_id: int) -> None:
+    """Demo data for the console pages that are not DNS zones: CIDR collections, traffic policies, profiles..."""
+    kind = get_kind
+    example = db.scalar(select(HostedZone).where(HostedZone.name == "example.com"))
+    cidr = resource_service.create(
+        db, owner_id, kind("cidr_collection"),
+        {"name": "office-networks", "locations": [
+            {"name": "london", "cidr_blocks": ["203.0.113.0/24", "2001:db8:a::/48"]},
+            {"name": "paris", "cidr_blocks": ["198.51.100.0/24"]},
+            {"name": "singapore", "cidr_blocks": ["192.0.2.0/26"]},
+        ]},
+        public_id="cidr-0a1b2c3d4e5f6a7b8",
+    )  # fmt: skip
+    _add(db, example, "geoip", "A", ["198.18.0.1"], routing_policy="ipbased", set_identifier="london", cidr_collection_id=cidr.public_id, cidr_location="london")
+    _add(db, example, "geoip", "A", ["198.18.0.2"], routing_policy="ipbased", set_identifier="paris", cidr_collection_id=cidr.public_id, cidr_location="paris")
+    _add(db, example, "geoip", "A", ["198.18.0.99"], routing_policy="ipbased", set_identifier="default", cidr_collection_id=cidr.public_id, cidr_location="*")
+
+    failover = {
+        "AWSPolicyFormatVersion": "2015-10-01", "RecordType": "A", "StartRule": "main",
+        "Endpoints": {"primary": {"Type": "value", "Value": "198.51.100.10"}, "standby": {"Type": "value", "Value": "198.51.100.20"}},
+        "Rules": {"main": {"RuleType": "failover", "Primary": {"EndpointReference": "primary", "HealthCheck": "hc-0a1b2c3d4e5f6a7b8"}, "Secondary": {"EndpointReference": "standby"}}},
+    }  # fmt: skip
+    weighted = {
+        "RecordType": "A", "StartRule": "split",
+        "Endpoints": {"blue": {"Type": "value", "Value": "198.51.100.31"}, "green": {"Type": "value", "Value": "198.51.100.32"}},
+        "Rules": {"split": {"RuleType": "weighted", "Items": [{"EndpointReference": "blue", "Weight": 90}, {"EndpointReference": "green", "Weight": 10}]}},
+    }  # fmt: skip
+    policy = resource_service.create(
+        db, owner_id, kind("traffic_policy"), {"name": "web-failover", "record_type": "A", "description": "Primary with standby", "document": failover},
+        public_id="tp-0a1b2c3d4e5f6a7b8",
+    )  # fmt: skip
+    resource_service.create(db, owner_id, kind("traffic_policy"), {"name": "canary-release", "record_type": "A", "description": "90/10 split", "document": weighted})
+    resource_service.create(
+        db, owner_id, kind("policy_record"),
+        {"zone_id": example.zone_id, "dns_name": "policy", "policy_id": policy.public_id, "policy_version": 1, "ttl": 60},
+    )  # fmt: skip
+    resource_service.create(
+        db, owner_id, kind("profile"),
+        {"name": "production-dns", "description": "DNS settings shared by production VPCs", "vpc_ids": ["vpc-0a1b2c3d4e5f60789"], "zone_ids": ["Z1R8UBAEXAMPLE6PRIV"]},
+    )  # fmt: skip
+
+
+_COPY_ORDER = (HealthCheck, HostedZone, VpcAssociation, DnsRecord, Resource)
 _CHUNK = 100
 
 

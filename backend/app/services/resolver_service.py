@@ -4,6 +4,7 @@ Answers queries from the records stored in the database, applying Route 53 routi
 policies. This is a behavioural model, not an authoritative DNS server.
 """
 import hashlib
+import ipaddress
 import random
 from dataclasses import dataclass, field
 
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.dns.constants import AWS_REGIONS, REGION_CONTINENT
 from app.dns.validators import DnsValueError, normalize_hostname
-from app.models import DnsRecord, HostedZone
+from app.models import DnsRecord, HostedZone, Resource
 from app.repositories import record_repo
 from app.schemas.dns import Answer, ResolveResponse
 
@@ -27,6 +28,7 @@ class _Ctx:
     client_region: str | None
     client_country: str | None
     client_continent: str | None
+    client_ip: str | None = None
     trace: list[str] = field(default_factory=list)
 
 
@@ -103,10 +105,45 @@ def _pick(records: list[DnsRecord], ctx: _Ctx) -> list[DnsRecord]:
                 return [match]
         ctx.trace.append("Geolocation routing: no location matches the client and there is no default record.")
         return []
+    if policy == "ipbased":
+        match = _ip_based_match(ctx, healthy)
+        if match is not None:
+            return [match]
+        ctx.trace.append("IP-based routing: the client address matches no CIDR location and there is no default (*) record.")
+        return []
     # multivalue
     chosen = healthy[:MULTIVALUE_LIMIT]
     ctx.trace.append(f"Multivalue answer: returning {len(chosen)} healthy record(s) of {len(records)}.")
     return chosen
+
+
+def _ip_based_match(ctx: _Ctx, records: list[DnsRecord]) -> DnsRecord | None:
+    """Pick the record whose CIDR location contains the client IP, falling back to the default (*) location."""
+    default = next((r for r in records if r.cidr_location == "*"), None)
+    if not ctx.client_ip:
+        ctx.trace.append("IP-based routing: no client IP was given, so the default (*) location is used." if default else "IP-based routing: no client IP given.")
+        return default
+    try:
+        address = ipaddress.ip_address(ctx.client_ip)
+    except ValueError:
+        ctx.trace.append(f"IP-based routing: '{ctx.client_ip}' is not a valid IP address.")
+        return default
+    for record in records:
+        if record.cidr_location == "*":
+            continue
+        collection = ctx.db.scalar(select(Resource).where(Resource.kind == "cidr_collection", Resource.public_id == record.cidr_collection_id))
+        if collection is None:
+            continue
+        for location in collection.data.get("locations", []):
+            if location["name"] != record.cidr_location:
+                continue
+            for block in location.get("cidr_blocks", []):
+                network = ipaddress.ip_network(block, strict=False)
+                if network.version == address.version and address in network:
+                    ctx.trace.append(f"IP-based routing: {address} is inside {block} (location '{location['name']}').")
+                    return record
+    ctx.trace.append(f"IP-based routing: {address} is not in any CIDR location" + ("; using the default (*) record." if default else "."))
+    return default
 
 
 def _mock_alias_answers(target: str, rtype: str) -> list[str]:
@@ -170,7 +207,7 @@ def _resolve_alias(ctx: _Ctx, zone: HostedZone, name: str, record: DnsRecord, rt
 
 def resolve(
     db: Session, name: str, rtype: str, *, view: str = "public", client_region: str | None = None,
-    client_country: str | None = None, client_continent: str | None = None, seed: int | None = None,
+    client_country: str | None = None, client_continent: str | None = None, client_ip: str | None = None, seed: int | None = None,
 ) -> ResolveResponse:  # fmt: skip
     rtype = rtype.upper()
     try:
@@ -179,7 +216,7 @@ def resolve(
         return ResolveResponse(name=name, type=rtype, rcode="FORMERR", answers=[], trace=[str(exc)])
     continent = (client_continent or "").upper() or (REGION_CONTINENT.get((client_region or "").split("-")[0]) if client_region else None)
     country = (client_country or "").upper() or None
-    ctx = _Ctx(db, random.Random(seed), client_region, country, continent)
+    ctx = _Ctx(db, random.Random(seed), client_region, country, continent, (client_ip or '').strip() or None)
     zone = _find_zone(db, fqdn, view)
     if zone is None:
         ctx.trace.append("No hosted zone in this account is authoritative for that name (REFUSED).")

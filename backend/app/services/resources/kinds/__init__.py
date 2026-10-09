@@ -1,2 +1,2 @@
 """Importing this package registers every resource kind."""
-from app.services.resources.kinds import profile  # noqa: F401
+from app.services.resources.kinds import cidr_collection, policy_record, profile, traffic_policy  # noqa: F401

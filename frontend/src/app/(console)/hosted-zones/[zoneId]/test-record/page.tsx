@@ -42,6 +42,7 @@ export default function TestRecordPage({ params }: { params: Promise<{ zoneId: s
   const [type, setType] = useState("A");
   const [region, setRegion] = useState("");
   const [country, setCountry] = useState("");
+  const [clientIp, setClientIp] = useState("");
   const [result, setResult] = useState<ResolveResponse | null>(null);
   const [sample, setSample] = useState<Record<string, number> | null>(null);
 
@@ -54,6 +55,7 @@ export default function TestRecordPage({ params }: { params: Promise<{ zoneId: s
     type,
     client_region: region || undefined,
     client_country: country || undefined,
+    client_ip: clientIp.trim() || undefined,
     view: zone.data.type,
   });
 
@@ -97,6 +99,9 @@ export default function TestRecordPage({ params }: { params: Promise<{ zoneId: s
             </FormField>
             <FormField label="Resolver location (AWS Region)" description="Used by latency routing.">
               <Select selectedOption={region ? { value: region, label: region } : NONE} options={[NONE, ...AWS_REGIONS.map((r) => ({ value: r, label: r }))]} onChange={({ detail }) => setRegion(detail.selectedOption.value ?? "")} ariaLabel="Client region" />
+            </FormField>
+            <FormField label={<>Client IP address <i>- optional</i></>} description="Used by IP-based routing (CIDR collections).">
+              <Input value={clientIp} onChange={({ detail }) => setClientIp(detail.value)} placeholder="203.0.113.10" ariaLabel="Client IP address" />
             </FormField>
             <FormField label="Client country" description="Used by geolocation routing.">
               <Select selectedOption={country ? { value: country, label: COUNTRIES[country] ?? country } : NONE} options={[NONE, ...Object.entries(COUNTRIES).map(([v, l]) => ({ value: v, label: l }))]} onChange={({ detail }) => setCountry(detail.selectedOption.value ?? "")} filteringType="auto" ariaLabel="Client country" />

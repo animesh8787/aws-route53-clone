@@ -121,13 +121,14 @@ export function RecordForm({ zone, record, submitLabel, title, description, onSu
           header={<Header variant="h1" description={description}>{title}</Header>}
           actions={
             <SpaceBetween direction="horizontal" size="xs">
-              <Button variant="link" onClick={onCancel} disabled={saving}>Cancel</Button>
-              <Button variant="primary" formAction="submit" loading={saving}>{submitLabel}</Button>
+              <Button variant="link" formAction="none" onClick={onCancel} disabled={saving}>Cancel</Button>
+              <Button variant="primary" formAction="submit" loading={saving} disabled={!!record?.policy_record_id}>{submitLabel}</Button>
             </SpaceBetween>
           }
         >
           <SpaceBetween size="l">
             {submitError && <Alert type="error" header="Unable to save record">{submitError}</Alert>}
+            {record?.policy_record_id && <Alert type="warning" header="Managed by a traffic policy record">This record is created from the policy record {record.policy_record_id}. Change or delete the policy record to modify it.</Alert>}
             {isSystem && <Alert type="info">This is a default {record?.type} record managed by Route 53. You can change its TTL and values, but not its name or type.</Alert>}
 
             <Container header={<Header variant="h2">{editing ? "Record details" : "Quick create record"}</Header>}>
@@ -248,7 +249,7 @@ export function RecordForm({ zone, record, submitLabel, title, description, onSu
                               <Input type="number" inputMode="numeric" value={field.value} onChange={({ detail }) => field.onChange(detail.value)} onBlur={field.onBlur} invalid={!!fieldState.error} ariaLabel="TTL in seconds" />
                             </div>
                             {TTL_PRESETS.map((p) => (
-                              <Button key={p.label} onClick={() => field.onChange(String(p.seconds))}>{p.label}</Button>
+                              <Button key={p.label} formAction="none" onClick={() => field.onChange(String(p.seconds))}>{p.label}</Button>
                             ))}
                           </SpaceBetween>
                         </FormField>

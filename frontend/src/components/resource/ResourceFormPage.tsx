@@ -7,7 +7,7 @@ import Form from "@cloudscape-design/components/form";
 import Header from "@cloudscape-design/components/header";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import Spinner from "@cloudscape-design/components/spinner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch, type FieldErrors, type Resolver } from "react-hook-form";
 
@@ -21,11 +21,18 @@ import { idOf, type FormValues, type ResourceConfig, type ResourceItem } from "@
 
 const isEmpty = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "") || (Array.isArray(v) && v.filter((x) => String(x).trim() !== "").length === 0);
 
-function initialValues(config: ResourceConfig, item?: ResourceItem): FormValues {
+function initialValues(config: ResourceConfig, item?: ResourceItem, prefill?: URLSearchParams): FormValues {
   const base: FormValues = {};
   for (const f of config.fields) base[f.name] = f.initial ?? (f.type === "multiselect" || f.type === "lines" ? [] : f.type === "toggle" ? false : "");
   Object.assign(base, config.defaults ?? {});
-  if (!item) return base;
+  if (!item) {
+    // Create links can prefill fields, e.g. /policy-records/create?policy_id=tp-...
+    for (const f of config.fields) {
+      const preset = prefill?.get(f.name);
+      if (preset) base[f.name] = preset;
+    }
+    return base;
+  }
   const fromItem = config.toForm ? config.toForm(item) : Object.fromEntries(config.fields.map((f) => [f.name, item[f.name]]));
   for (const [k, v] of Object.entries(fromItem)) if (v !== undefined && v !== null) base[k] = v;
   return base;
@@ -85,7 +92,8 @@ function FormBody({ config, item, id, router, flash }: { config: ResourceConfig;
   const create = useCreateResource(config);
   const update = useUpdateResource(config, id ?? "");
   const resolver = useMemo(() => buildResolver(config), [config]);
-  const form = useForm<FormValues>({ resolver, defaultValues: initialValues(config, item), mode: "onTouched" });
+  const prefill = useSearchParams();
+  const form = useForm<FormValues>({ resolver, defaultValues: initialValues(config, item, prefill), mode: "onTouched" });
   const values = useWatch({ control: form.control }) as FormValues;
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -101,13 +109,15 @@ function FormBody({ config, item, id, router, flash }: { config: ResourceConfig;
       router.push(`/${config.route}/${idOf(config, saved)}`);
     } catch (error) {
       if (error instanceof ApiError) {
-        let handled = 0;
+        const byField = new Map<string, string[]>();
         for (const err of error.errors) {
           const target = err.field.split(".")[0].split("[")[0];
-          if (config.fields.some((f) => f.name === target)) {
-            form.setError(target, { message: err.message });
-            handled += 1;
-          }
+          if (config.fields.some((f) => f.name === target)) byField.set(target, [...(byField.get(target) ?? []), err.message]);
+        }
+        let handled = 0;
+        for (const [target, messages] of byField) {
+          form.setError(target, { message: [...new Set(messages)].join("\n") });
+          handled += messages.length;
         }
         setSubmitError(handled && handled === error.errors.length && handled > 1 ? "Some values need your attention. Fix the highlighted fields and try again." : error.detail);
       } else {
@@ -125,7 +135,7 @@ function FormBody({ config, item, id, router, flash }: { config: ResourceConfig;
         header={<Header variant="h1" description={config.description}>{editing ? `Edit ${config.singular}` : `Create ${config.singular}`}</Header>}
         actions={
           <SpaceBetween direction="horizontal" size="xs">
-            <Button variant="link" disabled={saving} onClick={() => router.push(editing ? `/${config.route}/${id}` : `/${config.route}`)}>Cancel</Button>
+            <Button variant="link" formAction="none" disabled={saving} onClick={() => router.push(editing ? `/${config.route}/${id}` : `/${config.route}`)}>Cancel</Button>
             <Button variant="primary" formAction="submit" loading={saving}>{editing ? "Save changes" : `Create ${config.singular}`}</Button>
           </SpaceBetween>
         }

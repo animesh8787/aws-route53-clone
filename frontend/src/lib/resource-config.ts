@@ -4,7 +4,7 @@ export type ResourceItem = Record<string, unknown> & { name: string };
 export type FormValues = Record<string, unknown>;
 
 /** Where the options of a select / multiselect come from. */
-export type OptionSource = "vpcs" | "private-zones" | `resources:${string}` | `list:${string}`;
+export type OptionSource = "vpcs" | "private-zones" | "zones" | `resources:${string}` | `list:${string}`;
 
 export interface Option {
   value: string;

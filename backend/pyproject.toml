@@ -13,6 +13,8 @@ ignore = ["B008"]  # FastAPI's Depends() in argument defaults is idiomatic
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E402", "E501", "E731"]
+"app/services/resources/kinds/*" = ["E501"]
+"app/seed.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

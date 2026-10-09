@@ -1,5 +1,6 @@
 "use client";
 
+import Badge from "@cloudscape-design/components/badge";
 import Box from "@cloudscape-design/components/box";
 import Button from "@cloudscape-design/components/button";
 import ButtonDropdown from "@cloudscape-design/components/button-dropdown";
@@ -84,11 +85,17 @@ export function RecordsTable({ zone }: { zone: HostedZone }) {
       header: "Record name",
       sortingField: "name",
       isRowHeader: true,
-      cell: (r) => (
-        <Link href={editHref(r)} onFollow={(e) => { e.preventDefault(); router.push(editHref(r)); }}>
-          {trimDot(r.name)}
-        </Link>
-      ),
+      cell: (r) => {
+        const href = r.policy_record_id ? `/policy-records/${r.policy_record_id}` : editHref(r);
+        return (
+          <SpaceBetween direction="horizontal" size="xs">
+            <Link href={href} onFollow={(e) => { e.preventDefault(); router.push(href); }}>
+              {trimDot(r.name)}
+            </Link>
+            {r.policy_record_id && <Badge color="blue">Traffic policy</Badge>}
+          </SpaceBetween>
+        );
+      },
     },
     { id: "type", header: "Type", sortingField: "type", cell: (r) => r.type },
     { id: "routing", header: "Routing policy", sortingField: "routing_policy", cell: (r) => ROUTING_LABEL[r.routing_policy] },
@@ -140,11 +147,11 @@ export function RecordsTable({ zone }: { zone: HostedZone }) {
         selectionType="multi"
         selectedItems={selected}
         onSelectionChange={({ detail }) => setSelected(detail.selectedItems)}
-        isItemDisabled={(r) => r.is_system}
+        isItemDisabled={(r) => r.is_system || !!r.policy_record_id}
         ariaLabels={{
           selectionGroupLabel: "Record selection",
           allItemsSelectionLabel: () => "Select all records on this page",
-          itemSelectionLabel: (_s, item) => `Select ${trimDot(item.name)} ${item.type}${item.is_system ? " (default record, cannot be selected)" : ""}`,
+          itemSelectionLabel: (_s, item) => `Select ${trimDot(item.name)} ${item.type}${item.is_system ? " (default record, cannot be selected)" : item.policy_record_id ? " (managed by a traffic policy, cannot be selected)" : ""}`,
         }}
         sortingColumn={{ sortingField: sort }}
         sortingDescending={order === "desc"}

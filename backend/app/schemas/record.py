@@ -29,6 +29,8 @@ class RecordIn(BaseModel):
     geo_continent: str | None = None
     geo_country: str | None = None
     geo_subdivision: str | None = None
+    cidr_collection_id: str | None = None
+    cidr_location: str | None = None
     alias: AliasIn | None = None
     health_check_id: str | None = None
 
@@ -49,6 +51,9 @@ class RecordOut(BaseModel):
     geo_continent: str | None
     geo_country: str | None
     geo_subdivision: str | None
+    cidr_collection_id: str | None
+    cidr_location: str | None
+    policy_record_id: str | None
     alias: AliasOut | None
     health_check_id: str | None
     is_system: bool

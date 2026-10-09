@@ -47,7 +47,7 @@ def normalize_record(zone_name: str, zone_id: str, payload: RecordIn, *, allow_s
     set_id = (payload.set_identifier or "").strip()
     out.update(
         routing_policy=policy, set_identifier=set_id, weight=None, region=None, failover=None,
-        geo_continent=None, geo_country=None, geo_subdivision=None,
+        geo_continent=None, geo_country=None, geo_subdivision=None, cidr_collection_id=None, cidr_location=None,
     )  # fmt: skip
     if policy not in ROUTING_POLICIES:
         errors.append(field_error("routing_policy", f"Routing policy must be one of: {', '.join(ROUTING_POLICIES)}."))
@@ -102,7 +102,15 @@ def _validate_values(rtype: str, raw_values: list[str], policy: str, errors: lis
 
 
 def _validate_policy_fields(policy: str, payload: RecordIn, out: dict, errors: list) -> None:
-    if policy == "weighted":
+    if policy == "ipbased":
+        collection = (payload.cidr_collection_id or "").strip()
+        location = (payload.cidr_location or "").strip()
+        if not collection:
+            errors.append(field_error("cidr_collection_id", "Choose a CIDR collection."))
+        if not location:
+            errors.append(field_error("cidr_location", "Choose a location, or * for the default."))
+        out.update(cidr_collection_id=collection or None, cidr_location=location or None)
+    elif policy == "weighted":
         if payload.weight is None or not 0 <= payload.weight <= 255:
             errors.append(field_error("weight", "Weight must be a whole number between 0 and 255."))
         else:

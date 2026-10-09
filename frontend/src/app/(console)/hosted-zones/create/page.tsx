@@ -96,7 +96,7 @@ export default function CreateHostedZonePage() {
         }
         actions={
           <SpaceBetween direction="horizontal" size="xs">
-            <Button variant="link" onClick={() => router.push("/hosted-zones")}>Cancel</Button>
+            <Button variant="link" formAction="none" onClick={() => router.push("/hosted-zones")}>Cancel</Button>
             <Button variant="primary" formAction="submit" loading={create.isPending}>Create hosted zone</Button>
           </SpaceBetween>
         }

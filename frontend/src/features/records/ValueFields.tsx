@@ -104,6 +104,7 @@ function StructuredRows({ name, serverError }: { name: RowKey; serverError?: str
             ))}
             <div style={{ paddingTop: index === 0 ? 28 : 0 }}>
               <Button
+                formAction="none"
                 variant="icon"
                 iconName="close"
                 disabled={fields.length === 1}
@@ -114,7 +115,7 @@ function StructuredRows({ name, serverError }: { name: RowKey; serverError?: str
           </Grid>
         ))}
         <div>
-          <Button iconName="add-plus" onClick={() => append({ ...spec.blank } as never)}>
+          <Button iconName="add-plus" formAction="none" onClick={() => append({ ...spec.blank } as never)}>
             Add another {spec.noun}
           </Button>
         </div>

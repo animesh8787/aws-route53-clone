@@ -76,6 +76,10 @@ export function useOptions(source: OptionSource | undefined): { options: Option[
         const vpcs = await api.get<MockVpc[]>("/vpcs");
         return vpcs.map((v) => ({ value: v.vpc_id, label: v.vpc_id, description: `${v.name} · ${v.region} · ${v.cidr}` }));
       }
+      if (source === "zones") {
+        const zones = await api.get<Page<HostedZone>>("/hosted-zones", { page_size: 100 });
+        return zones.items.map((z) => ({ value: z.zone_id, label: z.name, description: `${z.type === "private" ? "Private" : "Public"} · ${z.zone_id}` }));
+      }
       if (source === "private-zones") {
         const zones = await api.get<Page<HostedZone>>("/hosted-zones", { type: "private", page_size: 100 });
         return zones.items.map((z) => ({ value: z.zone_id, label: z.name, description: z.zone_id }));

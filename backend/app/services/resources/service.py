@@ -11,12 +11,21 @@ from app.models import Resource
 from app.repositories.pagination import paginate
 from app.services import activity_service
 from app.services.resources.base import ResourceKind
+from app.services.resources.registry import get_kind
 
 BASE_SORTS = {"name": Resource.name, "status": Resource.status, "created_at": Resource.created_at}
 
 
-def to_out(resource: Resource) -> dict[str, Any]:
+def to_out(resource: Resource, db: Session | None = None) -> dict[str, Any]:
     """Flat representation: bookkeeping fields plus the kind's own fields."""
+    out = _flat(resource)
+    kind = get_kind(resource.kind)
+    if kind.present is not None and db is not None:
+        out.update(kind.present(db, resource, out))
+    return out
+
+
+def _flat(resource: Resource) -> dict[str, Any]:
     return {
         "id": resource.public_id,
         "kind": resource.kind,
@@ -100,8 +109,12 @@ def create(db: Session, owner_id: int, kind: ResourceKind, raw: dict, *, public_
     )  # fmt: skip
     db.add(resource)
     db.flush()
-    if kind.after_create:
-        kind.after_create(db, owner_id, resource)
+    try:
+        if kind.after_create:
+            kind.after_create(db, owner_id, resource)
+    except Exception:
+        db.rollback()
+        raise
     activity_service.record(db, owner_id, "created", kind.label, resource.name, href=f"{kind.href}/{resource.public_id}")
     db.commit()
     db.refresh(resource)
@@ -112,6 +125,13 @@ def update(db: Session, owner_id: int, kind: ResourceKind, resource: Resource, r
     data = _prepare(db, owner_id, kind, raw, resource)
     resource.name = data["name"]
     resource.data = data
+    db.flush()
+    try:
+        if kind.after_update:
+            kind.after_update(db, owner_id, resource)
+    except Exception:
+        db.rollback()
+        raise
     activity_service.record(db, owner_id, "updated", kind.label, resource.name, href=f"{kind.href}/{resource.public_id}")
     db.commit()
     db.refresh(resource)

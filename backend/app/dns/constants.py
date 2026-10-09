@@ -4,7 +4,7 @@
 USER_RECORD_TYPES = ("A", "AAAA", "CAA", "CNAME", "MX", "NS", "PTR", "SRV", "TXT")
 RECORD_TYPES = (*USER_RECORD_TYPES, "SOA")
 
-ROUTING_POLICIES = ("simple", "weighted", "latency", "failover", "geolocation", "multivalue")
+ROUTING_POLICIES = ("simple", "weighted", "latency", "failover", "geolocation", "multivalue", "ipbased")
 
 AWS_REGIONS = (
     "us-east-1", "us-east-2", "us-west-1", "us-west-2",

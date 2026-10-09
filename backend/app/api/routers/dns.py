@@ -22,13 +22,14 @@ def resolve(
     client_region: str | None = None,
     client_country: str | None = None,
     client_continent: str | None = None,
+    client_ip: str | None = None,
     seed: int | None = None,
     db: Session = Depends(get_db),
 ):
     """Simulate a DNS query against the stored records (applies routing policies)."""
     return resolver_service.resolve(
         db, name, type, view=view, client_region=client_region, client_country=client_country,
-        client_continent=client_continent, seed=seed,
+        client_continent=client_continent, client_ip=client_ip, seed=seed,
     )  # fmt: skip
 
 

@@ -6,10 +6,65 @@ import Input from "@cloudscape-design/components/input";
 import RadioGroup from "@cloudscape-design/components/radio-group";
 import Select from "@cloudscape-design/components/select";
 import SpaceBetween from "@cloudscape-design/components/space-between";
+import { useQuery } from "@tanstack/react-query";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import { useHealthChecks } from "@/features/dns/hooks";
+import { useOptions } from "@/features/resources/api";
+import { api } from "@/lib/api";
+import type { ResourceItem } from "@/lib/resource-config";
 import { AWS_REGIONS, CONTINENTS, COUNTRIES, ROUTING_POLICIES, type RecordFormValues } from "@/lib/record-config";
+
+/** IP-based routing: pick a CIDR collection, then one of its locations (or the default). */
+function CidrFields() {
+  const { control, formState } = useFormContext<RecordFormValues>();
+  const collectionId = useWatch({ control, name: "cidrCollectionId" });
+  const collections = useOptions("resources:cidr_collection");
+  const detail = useQuery({
+    queryKey: ["resource", "/resources/cidr_collection", "detail", collectionId],
+    queryFn: () => api.get<ResourceItem>(`/resources/cidr_collection/${collectionId}`),
+    enabled: !!collectionId,
+  });
+  const locations = ((detail.data?.locations as { name: string }[] | undefined) ?? []).map((l) => ({ value: l.name, label: l.name }));
+  const locationOptions = [{ value: "*", label: "Default (*)", description: "Used when the client IP is in no location" }, ...locations];
+  return (
+    <ColumnLayout columns={2}>
+      <Controller
+        control={control}
+        name="cidrCollectionId"
+        render={({ field }) => (
+          <FormField label="CIDR collection" description="Create collections under IP-based routing > CIDR collections." errorText={formState.errors.cidrCollectionId?.message} stretch>
+            <Select
+              selectedOption={collections.options.find((o) => o.value === field.value) ?? null}
+              options={collections.options}
+              onChange={({ detail: d }) => field.onChange(d.selectedOption.value ?? "")}
+              statusType={collections.loading ? "loading" : "finished"}
+              placeholder="Choose a CIDR collection"
+              empty="No CIDR collections yet"
+              invalid={!!formState.errors.cidrCollectionId}
+              ariaLabel="CIDR collection"
+            />
+          </FormField>
+        )}
+      />
+      <Controller
+        control={control}
+        name="cidrLocation"
+        render={({ field }) => (
+          <FormField label="CIDR location" errorText={formState.errors.cidrLocation?.message} stretch>
+            <Select
+              selectedOption={locationOptions.find((o) => o.value === field.value) ?? { value: field.value, label: field.value }}
+              options={locationOptions}
+              onChange={({ detail: d }) => field.onChange(d.selectedOption.value ?? "*")}
+              statusType={detail.isFetching ? "loading" : "finished"}
+              ariaLabel="CIDR location"
+            />
+          </FormField>
+        )}
+      />
+    </ColumnLayout>
+  );
+}
 
 /** Fields that appear only for the chosen routing policy (weight, region, failover role, location...). */
 export function RoutingFields() {
@@ -97,6 +152,8 @@ export function RoutingFields() {
           )}
         </ColumnLayout>
       )}
+
+      {policy === "ipbased" && <CidrFields />}
 
       {policy === "geolocation" && (
         <SpaceBetween size="m">

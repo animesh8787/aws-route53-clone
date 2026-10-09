@@ -10,7 +10,7 @@ from app.core.errors import (
     field_error,
 )
 from app.dns.validators import DnsValueError, parse_value, validate_ttl
-from app.models import DnsRecord, HealthCheck, HostedZone
+from app.models import DnsRecord, HealthCheck, HostedZone, Resource
 from app.repositories import record_repo
 from app.schemas.record import AliasOut, RecordIn, RecordOut
 from app.services import zone_service
@@ -42,6 +42,9 @@ def to_out(record: DnsRecord, zone_id: str) -> RecordOut:
         geo_continent=record.geo_continent,
         geo_country=record.geo_country,
         geo_subdivision=record.geo_subdivision,
+        cidr_collection_id=record.cidr_collection_id,
+        cidr_location=record.cidr_location,
+        policy_record_id=record.policy_record_id,
         alias=alias,
         health_check_id=record.health_check.health_check_id if record.health_check else None,
         is_system=record.is_system,
@@ -91,6 +94,8 @@ def _check_conflicts(db: Session, zone: HostedZone, data: dict, exclude_id: int 
             raise ConflictError(f"A {data['failover']} failover record already exists for this name and type.")
         if policy == "latency" and existing.region == data["region"]:
             raise ConflictError(f"A latency record for region {data['region']} already exists for this name and type.")
+        if policy == "ipbased" and existing.cidr_collection_id == data["cidr_collection_id"] and existing.cidr_location == data["cidr_location"]:
+            raise ConflictError("An IP-based record for this CIDR location already exists for this name and type.")
         if policy == "geolocation" and _routing_key(existing)[2] == _routing_key(data)[2]:
             raise ConflictError("A geolocation record for this location already exists for this name and type.")
 
@@ -114,17 +119,31 @@ def _check_alias_target(db: Session, zone: HostedZone, data: dict, exclude_id: i
         raise ValidationFailure(msg, [field_error("alias.target", msg)])
 
 
+def _check_cidr(db: Session, data: dict) -> None:
+    if data["routing_policy"] != "ipbased":
+        return
+    collection = db.scalar(select(Resource).where(Resource.kind == "cidr_collection", Resource.public_id == data["cidr_collection_id"]))
+    if collection is None:
+        msg = "CIDR collection not found."
+        raise ValidationFailure(msg, [field_error("cidr_collection_id", msg)])
+    names = {loc["name"] for loc in collection.data.get("locations", [])}
+    if data["cidr_location"] != "*" and data["cidr_location"] not in names:
+        msg = f"'{data['cidr_location']}' is not a location of the collection '{collection.name}'."
+        raise ValidationFailure(msg, [field_error("cidr_location", msg)])
+
+
 def _prepare(db: Session, zone: HostedZone, payload: RecordIn, exclude_id: int | None, *, allow_soa: bool = False) -> dict:
     data = normalize_record(zone.name, zone.zone_id, payload, allow_soa=allow_soa)
     data["health_check_id"] = _resolve_health_check(db, data["health_check_id"])
     _check_alias_target(db, zone, data, exclude_id)
+    _check_cidr(db, data)
     _check_conflicts(db, zone, data, exclude_id)
     return data
 
 
-def create_record(db: Session, zone: HostedZone, payload: RecordIn, *, commit: bool = True) -> DnsRecord:
+def create_record(db: Session, zone: HostedZone, payload: RecordIn, *, commit: bool = True, managed_by: str | None = None) -> DnsRecord:
     data = _prepare(db, zone, payload, None)
-    record = DnsRecord(hosted_zone_id=zone.id, **data)
+    record = DnsRecord(hosted_zone_id=zone.id, policy_record_id=managed_by, **data)
     db.add(record)
     zone_service.refresh_record_count(db, zone)
     if commit:
@@ -134,6 +153,7 @@ def create_record(db: Session, zone: HostedZone, payload: RecordIn, *, commit: b
 
 
 def update_record(db: Session, record: DnsRecord, payload: RecordIn) -> DnsRecord:
+    _assert_not_managed(record)
     zone = record.zone
     data = _prepare(db, zone, payload, record.id, allow_soa=record.is_system)
     if record.is_system:
@@ -148,7 +168,13 @@ def update_record(db: Session, record: DnsRecord, payload: RecordIn) -> DnsRecor
     return record
 
 
+def _assert_not_managed(record: DnsRecord) -> None:
+    if record.policy_record_id:
+        raise ConflictError(f"This record is managed by the traffic policy record {record.policy_record_id}. Change or delete the policy record instead.")
+
+
 def _assert_deletable(record: DnsRecord) -> None:
+    _assert_not_managed(record)
     if record.is_system:
         raise ProtectedError(f"The default {record.type} record is managed by Route 53 and cannot be deleted.")
 
@@ -171,6 +197,8 @@ def bulk_delete(db: Session, zone: HostedZone, ids: list[int]) -> tuple[int, lis
             skipped.append({"id": record_id, "reason": "Record not found in this hosted zone."})
         elif record.is_system:
             skipped.append({"id": record_id, "reason": f"Default {record.type} record cannot be deleted."})
+        elif record.policy_record_id:
+            skipped.append({"id": record_id, "reason": f"Managed by traffic policy record {record.policy_record_id}."})
         else:
             db.delete(record)
             deleted += 1
@@ -193,6 +221,8 @@ def bulk_update_ttl(db: Session, zone: HostedZone, ids: list[int], ttl: int) -> 
             skipped.append({"id": record_id, "reason": "Record not found in this hosted zone."})
         elif record.alias_target:
             skipped.append({"id": record_id, "reason": "Alias records do not have a TTL."})
+        elif record.policy_record_id:
+            skipped.append({"id": record_id, "reason": f"Managed by traffic policy record {record.policy_record_id}."})
         else:
             record.ttl = ttl
             updated += 1

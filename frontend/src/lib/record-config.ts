@@ -43,6 +43,7 @@ export const ROUTING_POLICIES: { value: RoutingPolicy; label: string; descriptio
   { value: "failover", label: "Failover", description: "Route to a standby resource when the primary is unhealthy" },
   { value: "geolocation", label: "Geolocation", description: "Route based on the location of your users" },
   { value: "multivalue", label: "Multivalue answer", description: "Return up to eight healthy values at random" },
+  { value: "ipbased", label: "IP-based", description: "Route based on the client IP address using a CIDR collection" },
 ];
 export const ROUTING_LABEL = Object.fromEntries(ROUTING_POLICIES.map((p) => [p.value, p.label])) as Record<RoutingPolicy, string>;
 
@@ -100,6 +101,8 @@ export interface RecordFormValues {
   geoContinent: string;
   geoCountry: string;
   geoSubdivision: string;
+  cidrCollectionId: string;
+  cidrLocation: string;
   healthCheckId: string;
 }
 
@@ -124,6 +127,8 @@ export const emptyFormValues = (type: RecordType = "A"): RecordFormValues => ({
   geoContinent: "EU",
   geoCountry: "US",
   geoSubdivision: "",
+  cidrCollectionId: "",
+  cidrLocation: "*",
   healthCheckId: "",
 });
 
@@ -157,6 +162,8 @@ export function formToInput(v: RecordFormValues): RecordInput {
     geo_continent: policy === "geolocation" && v.geoKind === "continent" ? v.geoContinent : null,
     geo_country: policy === "geolocation" ? (v.geoKind === "default" ? "*" : v.geoKind === "country" ? v.geoCountry : null) : null,
     geo_subdivision: policy === "geolocation" && v.geoKind === "country" && v.geoCountry === "US" ? v.geoSubdivision.trim() || null : null,
+    cidr_collection_id: policy === "ipbased" ? v.cidrCollectionId || null : null,
+    cidr_location: policy === "ipbased" ? v.cidrLocation || null : null,
     alias: v.aliasEnabled ? { target: v.aliasTarget.trim(), target_type: v.aliasTargetType, evaluate_target_health: v.evaluateTargetHealth } : null,
     health_check_id: v.healthCheckId || null,
   };
@@ -194,6 +201,8 @@ export function recordToForm(r: DnsRecord, zoneName: string): RecordFormValues {
     geoContinent: r.geo_continent ?? "EU",
     geoCountry: r.geo_country && r.geo_country !== "*" ? r.geo_country : "US",
     geoSubdivision: r.geo_subdivision ?? "",
+    cidrCollectionId: r.cidr_collection_id ?? "",
+    cidrLocation: r.cidr_location ?? "*",
     healthCheckId: r.health_check_id ?? "",
   };
 }
@@ -218,6 +227,7 @@ export function differentiator(r: DnsRecord): string {
     case "latency": return `Region: ${r.region}`;
     case "failover": return r.failover === "PRIMARY" ? "Failover: Primary" : "Failover: Secondary";
     case "geolocation": return `Location: ${displayGeo(r)}`;
+    case "ipbased": return `CIDR location: ${r.cidr_location === "*" ? "Default" : r.cidr_location}`;
     case "multivalue": return "Multivalue answer";
     default: return "-";
   }

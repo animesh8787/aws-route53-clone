@@ -139,3 +139,20 @@ export function validateCaaValue(value: string): string | null {
   if (!v) return "CAA value must not be empty.";
   return v.includes('"') ? "CAA value cannot contain double quotes." : null;
 }
+
+/** CIDR block check: valid IPv4/IPv6 network with no host bits set (IPv4) and a legal prefix length. */
+export function validateCidr(raw: string): string | null {
+  const text = raw.trim();
+  const msg = `'${text}' is not a valid CIDR block (for example 192.0.2.0/24 or 2001:db8::/32).`;
+  const parts = text.split("/");
+  if (parts.length !== 2 || !/^\d{1,3}$/.test(parts[1])) return msg;
+  const prefix = Number(parts[1]);
+  if (!validateIPv4(parts[0])) {
+    if (prefix > 32) return msg;
+    const n = parts[0].split(".").reduce((acc, o) => acc * 256 + Number(o), 0);
+    const hostBits = 32 - prefix;
+    return hostBits > 0 && n % 2 ** hostBits !== 0 ? `'${text}' has host bits set; use the network address (for example 192.0.2.0/24).` : null;
+  }
+  if (!validateIPv6(parts[0]) && prefix <= 128) return null;
+  return msg;
+}

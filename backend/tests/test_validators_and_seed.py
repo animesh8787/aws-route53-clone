@@ -74,6 +74,6 @@ def test_seed_populates_all_record_types_and_policies(db_ready):
         types = set(db.scalars(select(DnsRecord.type).distinct()))
         assert {"A", "AAAA", "CNAME", "TXT", "MX", "NS", "PTR", "SRV", "CAA", "SOA"} <= types
         policies = set(db.scalars(select(DnsRecord.routing_policy).distinct()))
-        assert policies == {"simple", "weighted", "latency", "failover", "geolocation", "multivalue"}
+        assert policies == {"simple", "weighted", "latency", "failover", "geolocation", "multivalue", "ipbased"}
         private = db.scalar(select(HostedZone).where(HostedZone.name == "internal.local"))
         assert private.is_private and private.vpcs

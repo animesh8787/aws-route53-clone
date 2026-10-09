@@ -45,6 +45,10 @@ class DnsRecord(Base):
     geo_country: Mapped[str | None] = mapped_column(String(2), nullable=True)
     geo_subdivision: Mapped[str | None] = mapped_column(String(3), nullable=True)
 
+    cidr_collection_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # public id of a CIDR collection
+    cidr_location: Mapped[str | None] = mapped_column(String(64), nullable=True)  # location name, or "*" for the default
+    policy_record_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # set when managed by a traffic policy record
+
     alias_target: Mapped[str | None] = mapped_column(String(255), nullable=True)
     alias_target_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     alias_hosted_zone_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
