@@ -9,6 +9,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { ChromeContext, useChromeState } from "@/components/layout/ChromeContext";
+import { HelpProvider, useHelp } from "@/components/layout/HelpContext";
+import { HelpPanel } from "@/components/layout/HelpPanel";
 import { FlashMessages } from "@/components/layout/FlashProvider";
 import { NAV_ITEMS } from "@/components/layout/nav-items";
 import { ShortcutsProvider } from "@/components/layout/ShortcutsProvider";
@@ -22,6 +24,15 @@ function activeHref(pathname: string): string {
 }
 
 export function ConsoleShell({ children }: { children: React.ReactNode }) {
+  return (
+    <HelpProvider>
+      <ConsoleShellInner>{children}</ConsoleShellInner>
+    </HelpProvider>
+  );
+}
+
+function ConsoleShellInner({ children }: { children: React.ReactNode }) {
+  const help = useHelp();
   const router = useRouter();
   const pathname = usePathname();
   const { data: user, isPending } = useCurrentUser();
@@ -59,7 +70,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
             utilities={[
               { type: "button", text: "Services", iconName: "view-full", ariaLabel: "Services", onClick: () => router.push("/dashboard") },
               { type: "button", iconName: "notification", ariaLabel: "Notifications", title: "Notifications" },
-              { type: "button", iconName: "status-info", ariaLabel: "Support", title: "Support" },
+              { type: "button", iconName: "status-info", ariaLabel: "Help", title: "Help", onClick: () => help.open() },
               {
                 type: "menu-dropdown",
                 text: "Global",
@@ -89,7 +100,10 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
         <AppLayout
           headerSelector="#h"
           contentType={chromeState.chrome.contentType}
-          toolsHide
+          tools={<HelpPanel />}
+          toolsOpen={help.isOpen}
+          onToolsChange={({ detail }) => help.setOpen(detail.open)}
+          ariaLabels={{ tools: "Help panel", toolsToggle: "Open help panel", toolsClose: "Close help panel" }}
           navigationOpen={navOpen}
           onNavigationChange={({ detail }) => setNavOpen(detail.open)}
           navigation={

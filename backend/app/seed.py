@@ -1,6 +1,7 @@
 """Development seed / reset command: ``python -m app.seed [--reset]``."""
 import argparse
 import logging
+from datetime import datetime
 
 from sqlalchemy import create_engine, insert, select
 from sqlalchemy.orm import Session
@@ -35,21 +36,32 @@ def _add(db: Session, zone: HostedZone, name: str, rtype: str, values: list[str]
     record_service.create_record(db, zone, payload)
 
 
-def ensure_user(db: Session) -> None:
+def ensure_user(db: Session) -> User:
     settings = get_settings()
-    if db.scalar(select(User).where(User.email == settings.demo_email)) is None:
-        db.add(User(email=settings.demo_email, password_hash=hash_password(settings.demo_password), display_name="demo-user"))
+    user = db.scalar(select(User).where(User.email == settings.demo_email))
+    if user is None:
+        user = User(email=settings.demo_email, password_hash=hash_password(settings.demo_password), display_name="demo-user")
+        db.add(user)
         db.commit()
+    return user
 
 
-def seed_health_checks(db: Session) -> None:
-    for hc_id, name, target, status in [
-        ("hc-0a1b2c3d4e5f6a7b8", "web-primary", "203.0.113.10:443", "HEALTHY"),
-        ("hc-1b2c3d4e5f6a7b8c9", "web-secondary", "203.0.113.20:443", "HEALTHY"),
-        ("hc-2c3d4e5f6a7b8c9d0", "api-eu", "api-eu.example.com:443", "UNHEALTHY"),
-    ]:
+DEMO_HEALTH_CHECKS = [
+    # public id, name, type, endpoint, port, path, status
+    ("hc-0a1b2c3d4e5f6a7b8", "web-primary", "HTTPS", "203.0.113.10", 443, "/health", "HEALTHY"),
+    ("hc-1b2c3d4e5f6a7b8c9", "web-secondary", "HTTP", "203.0.113.20", 80, "/", "HEALTHY"),
+    ("hc-2c3d4e5f6a7b8c9d0", "api-eu", "TCP", "api-eu.example.com", 443, "", "UNHEALTHY"),
+]
+
+
+def seed_health_checks(db: Session, owner_id: int) -> None:
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    for hc_id, name, hc_type, endpoint, port, path, status in DEMO_HEALTH_CHECKS:
         if db.scalar(select(HealthCheck).where(HealthCheck.health_check_id == hc_id)) is None:
-            db.add(HealthCheck(health_check_id=hc_id, name=name, target=target, status=status))
+            db.add(HealthCheck(
+                owner_id=owner_id, health_check_id=hc_id, name=name, type=hc_type, endpoint=endpoint, port=port, path=path,
+                status=status, regions=[], history=[{"status": status, "at": now, "note": "Seeded"}],
+            ))  # fmt: skip
     db.commit()
 
 
@@ -100,9 +112,9 @@ def _seed_simple(db: Session, zone: HostedZone, host_ip: str) -> None:
     _add(db, zone, "@", "MX", ["10 mx1." + zone.name])
 
 
-def _build_demo_data(db: Session) -> None:
+def _build_demo_data(db: Session, owner_id: int) -> None:
     """Create the demo zones/records through the normal services (full validation)."""
-    seed_health_checks(db)
+    seed_health_checks(db, owner_id)
     for name, kind, comment, zone_id in DEMO_ZONES:
         vpc = VpcIn(vpc_id="vpc-0a1b2c3d4e5f60789", region="us-east-1") if kind == "private" else None
         zone = zone_service.create_zone(db, HostedZoneCreate(name=name, type=kind, comment=comment, vpc=vpc), created_by="demo-user", zone_id=zone_id)
@@ -140,14 +152,14 @@ def seed_all(db: Session) -> None:
     INSERTs in one transaction. A remote database such as Turso charges a network round trip per
     statement, so seeding record-by-record there takes minutes and can leave half a dataset.
     """
-    ensure_user(db)
+    demo = ensure_user(db)
     if db.scalar(select(HostedZone.id).limit(1)) is not None:
         return
 
     scratch = create_engine("sqlite://")
     Base.metadata.create_all(scratch)
     with Session(scratch) as mem:
-        _build_demo_data(mem)
+        _build_demo_data(mem, demo.id)
         mem.commit()
         rows = {m: [dict(r._mapping) for r in mem.execute(m.__table__.select())] for m in _COPY_ORDER}
 

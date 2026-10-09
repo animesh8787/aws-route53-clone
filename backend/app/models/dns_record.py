@@ -51,7 +51,7 @@ class DnsRecord(Base):
     evaluate_target_health: Mapped[bool] = mapped_column(Boolean, default=False)
 
     health_check_id: Mapped[int | None] = mapped_column(
-        ForeignKey("mock_health_checks.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("health_checks.id", ondelete="SET NULL"), nullable=True
     )
     is_system: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

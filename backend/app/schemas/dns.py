@@ -19,18 +19,6 @@ class ResolveResponse(BaseModel):
     trace: list[str] = []
 
 
-class HealthCheckOut(BaseModel):
-    id: int
-    health_check_id: str
-    name: str
-    target: str
-    status: str
-
-
-class HealthCheckUpdate(BaseModel):
-    status: str
-
-
 class DashboardSummary(BaseModel):
     hosted_zones: int
     public_zones: int

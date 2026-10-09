@@ -125,7 +125,9 @@ export interface HealthCheck {
   id: number;
   health_check_id: string;
   name: string;
-  target: string;
+  type: string;
+  endpoint: string;
+  port: number;
   status: "HEALTHY" | "UNHEALTHY";
 }
 

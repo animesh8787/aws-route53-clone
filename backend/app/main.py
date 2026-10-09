@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import models  # noqa: F401  (register tables)
-from app.api.routers import auth, dns, hosted_zones, import_export, records
+from app.api.routers import auth, dns, health_checks, hosted_zones, import_export, records, resources
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging
@@ -70,7 +70,7 @@ def create_app() -> FastAPI:
     def health():
         return {"status": "ok"}
 
-    for router in (auth.router, hosted_zones.router, records.zone_records, import_export.router, records.records, dns.router):
+    for router in (auth.router, hosted_zones.router, records.zone_records, import_export.router, records.records, dns.router, health_checks.router, resources.router):
         app.include_router(router, prefix="/api")
     return app
 

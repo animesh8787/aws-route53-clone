@@ -17,8 +17,7 @@ def db_ready():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
-        ensure_user(db)
-        seed_health_checks(db)
+        seed_health_checks(db, ensure_user(db).id)
     yield
     Base.metadata.drop_all(engine)
 

@@ -31,7 +31,8 @@ class _Ctx:
 
 
 def _healthy(record: DnsRecord) -> bool:
-    return record.health_check is None or record.health_check.status == "HEALTHY"
+    hc = record.health_check
+    return hc is None or hc.disabled or hc.status == "HEALTHY"
 
 
 def _find_zone(db: Session, fqdn: str, view: str) -> HostedZone | None:

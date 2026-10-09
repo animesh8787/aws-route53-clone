@@ -3,17 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type FieldError } from "@/lib/api";
-import type { DashboardSummary, HealthCheck, ImportResult, ResolveResponse } from "@/types/api";
+import type { DashboardSummary, HealthCheck, ImportResult, Page, ResolveResponse } from "@/types/api";
 
 export function useHealthChecks() {
-  return useQuery({ queryKey: ["health-checks"], queryFn: () => api.get<HealthCheck[]>("/health-checks") });
-}
-
-export function useSetHealth() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => api.patch<HealthCheck>(`/health-checks/${id}`, { status }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["health-checks"] }),
+  return useQuery({
+    queryKey: ["health-checks", "options"],
+    queryFn: async () => (await api.get<Page<HealthCheck>>("/health-checks", { page_size: 100 })).items,
   });
 }
 

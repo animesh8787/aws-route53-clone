@@ -98,7 +98,7 @@ def test_resolve_weighted_failover_multivalue_latency_geo(client, zone):
     make_record(client, zid, type="A", name="f", values=["2.0.0.1"], routing_policy="failover", set_identifier="p", failover="PRIMARY", health_check_id=hc)
     make_record(client, zid, type="A", name="f", values=["2.0.0.2"], routing_policy="failover", set_identifier="s", failover="SECONDARY")
     assert client.get("/api/dns/resolve", params={"name": "f.example.com"}).json()["answers"][0]["value"] == "2.0.0.1"
-    assert client.patch(f"/api/health-checks/{hc}", json={"status": "UNHEALTHY"}).status_code == 200
+    assert client.patch(f"/api/health-checks/{hc}/status", json={"status": "UNHEALTHY"}).status_code == 200
     assert client.get("/api/dns/resolve", params={"name": "f.example.com"}).json()["answers"][0]["value"] == "2.0.0.2"
 
     for i in range(3):
@@ -120,4 +120,4 @@ def test_resolve_weighted_failover_multivalue_latency_geo(client, zone):
 def test_dashboard_and_health_checks(client, zone):
     summary = client.get("/api/dashboard/summary").json()
     assert summary["hosted_zones"] == 1 and summary["records"] == 2
-    assert len(client.get("/api/health-checks").json()) == 3
+    assert client.get("/api/health-checks").json()["total"] == 3
