@@ -6,12 +6,16 @@ import SpaceBetween from "@cloudscape-design/components/space-between";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+/** Dispatched on window (for example by the Help menu) to open the keyboard-shortcuts dialog. */
+export const OPEN_SHORTCUTS_EVENT = "r53:shortcuts";
+
 export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: "/", action: "Focus the search / filter box" },
   { keys: "c", action: "Create (hosted zone, or record when viewing a zone)" },
   { keys: "g then d", action: "Go to Dashboard" },
   { keys: "g then h", action: "Go to Hosted zones" },
   { keys: "?", action: "Show this help" },
+  { keys: "Alt+S", action: "Focus the console search" },
 ];
 
 function isTyping(target: EventTarget | null): boolean {
@@ -53,8 +57,13 @@ export function ShortcutsProvider({ children }: { children: React.ReactNode }) {
         setHelpOpen(true);
       }
     }
+    const openHelp = () => setHelpOpen(true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener(OPEN_SHORTCUTS_EVENT, openHelp);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(OPEN_SHORTCUTS_EVENT, openHelp);
+    };
   }, [router, pathname]);
 
   return (

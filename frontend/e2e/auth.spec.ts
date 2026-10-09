@@ -16,7 +16,7 @@ async function signUp(page: Page, email: string, name = "E2E User") {
 
 async function signOut(page: Page, name: string) {
   await page.getByRole("button", { name: new RegExp(name) }).click();
-  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
 }
 

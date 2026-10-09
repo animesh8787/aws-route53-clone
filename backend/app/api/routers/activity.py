@@ -1,6 +1,7 @@
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -54,3 +55,16 @@ def activity_summary(limit: int = Query(8, ge=1, le=30), user: User = Depends(ge
 def mark_read(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     activity_service.mark_all_read(db, user.id)
     return Message(detail="All notifications marked as read.")
+
+
+class FeedbackIn(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    sentiment: Literal["positive", "neutral", "negative"] = "neutral"
+    page: str = Field(default="", max_length=200)
+
+
+@router.post("/feedback", response_model=Message, status_code=201)
+def send_feedback(body: FeedbackIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Console feedback form: kept in the account's activity log (there is no mail service)."""
+    activity_service.log(db, user.id, "sent", "Feedback", body.message.strip()[:80], href="/activity", detail=f"{body.sentiment} feedback on {body.page or 'the console'}")
+    return Message(detail="Thank you. Your feedback was sent.")

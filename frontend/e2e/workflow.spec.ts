@@ -10,7 +10,7 @@ async function login(page: Page) {
 }
 
 async function chooseOption(page: Page, selectLabel: string, option: RegExp | string) {
-  await page.getByRole("button", { name: new RegExp(selectLabel) }).first().click();
+  await page.getByRole("main").getByRole("button", { name: new RegExp(selectLabel) }).first().click();
   await page.getByRole("option", { name: option }).first().click();
 }
 
@@ -125,7 +125,7 @@ test("full Route 53 workflow with persistence across sessions", async ({ page })
 
   // ---- logout / login: data persists
   await page.getByRole("button", { name: /demo-user/ }).click();
-  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
   await page.goto("/hosted-zones");
   await expect(page).toHaveURL(/\/login/);
@@ -175,7 +175,8 @@ test("unauthenticated users are redirected and every console page renders", asyn
     ["/cidr-collections", /^CIDR collections/], ["/traffic-policies", /^Traffic policies/], ["/policy-records", /^Policy records/],
     ["/registered-domains", /^Registered domains/], ["/domain-requests", /^Requests/], ["/resolver", /^VPCs/], ["/resolver-inbound", /^Inbound endpoints/],
     ["/resolver-outbound", /^Outbound endpoints/], ["/resolver-rules", /^Rules/], ["/resolver-query-logging", /^Query logging/],
-    ["/dns-firewall", /^Rule groups/], ["/dns-firewall-domain-lists", /^Domain lists/],
+    ["/dns-firewall", /^Rule groups/], ["/dns-firewall-domain-lists", /^Domain lists/], ["/shared-dns-views", /^Shared DNS views/],
+    ["/resolver-outposts", /^Resolver on Outpost/], ["/billing", /^Billing and Cost Management/], ["/activity", /^Activity/],
   ];
   for (const [route, heading] of routes) {
     await page.goto(route);

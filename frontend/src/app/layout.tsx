@@ -1,5 +1,6 @@
 import "@cloudscape-design/global-styles/index.css";
 import "./globals.css";
+import "./console-chrome.css";
 
 import type { Metadata } from "next";
 

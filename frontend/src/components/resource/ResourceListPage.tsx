@@ -44,7 +44,7 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
   }, [debounced]);
 
   const list = useResourceList(config, { q: q || undefined, sort, order, page, page_size: pageSize, filters: activeFilters });
-  const { data, isPending, error, refetch } = list;
+  const { data, isPending, isFetching, error, refetch } = list;
   const [selected, setSelected] = useState<ResourceItem[]>([]);
   const [deleting, setDeleting] = useState<ResourceItem | null>(null);
   const [visible, setVisible] = useState(() => config.columns.filter((c) => !c.hidden).map((c) => c.id));
@@ -75,11 +75,10 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
     update({ q: null, page: null, ...Object.fromEntries((config.filters ?? []).map((f) => [f.key, null])) });
   };
 
-  return (
-    <>
+  const table = (
       <Table
-        variant="full-page"
-        stickyHeader
+        variant={config.intro ? "container" : "full-page"}
+        stickyHeader={!config.intro}
         items={data?.items ?? []}
         columnDefinitions={columns}
         columnDisplay={config.columns.map((c) => ({ id: c.id, visible: visible.includes(c.id) }))}
@@ -99,15 +98,17 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
         onSortingChange={({ detail }) => update({ sort: detail.sortingColumn.sortingField, order: detail.isDescending ? "desc" : "asc", page: null })}
         header={
           <Header
-            variant="awsui-h1-sticky"
+            variant={config.intro ? "h2" : "awsui-h1-sticky"}
             counter={data ? `(${data.total})` : undefined}
             info={<Link variant="info" onFollow={() => help.open(config.helpTopic ?? config.route)}>Info</Link>}
             description={config.description}
             actions={
               <SpaceBetween direction="horizontal" size="xs">
+                <Button iconName="refresh" ariaLabel={`Refresh ${config.title.toLowerCase()}`} loading={isFetching && !isPending} onClick={() => void refetch()} />
                 <Button disabled={!current} onClick={() => current && router.push(detailHref(current))}>View details</Button>
                 {!config.readOnly && <Button disabled={!current} onClick={() => current && router.push(`${detailHref(current)}/edit`)}>Edit</Button>}
                 {!config.readOnly && !config.noDelete && <Button disabled={!current} onClick={() => setDeleting(current ?? null)}>Delete</Button>}
+                {config.headerActions?.({ selected: current, refresh: () => void refetch() })}
                 {!config.readOnly && <Button variant="primary" onClick={() => router.push(createHref)}>{config.createLabel ?? `Create ${config.singular}`}</Button>}
               </SpaceBetween>
             }
@@ -117,7 +118,7 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
         }
         filter={
           <SpaceBetween direction="horizontal" size="xs">
-            <div style={{ minWidth: 300 }}>
+            <div style={{ minWidth: 300, width: "min(728px, 60vw)" }}>
               <TextFilter
                 filteringText={text}
                 filteringPlaceholder={config.searchPlaceholder}
@@ -176,6 +177,18 @@ export function ResourceListPage({ config }: { config: ResourceConfig }) {
           )
         }
       />
+  );
+
+  return (
+    <>
+      {config.intro ? (
+        <SpaceBetween size="l">
+          {config.intro}
+          {table}
+        </SpaceBetween>
+      ) : (
+        table
+      )}
       <DeleteResourceModal config={config} item={deleting} onDismiss={() => setDeleting(null)} onDeleted={() => setSelected([])} />
     </>
   );

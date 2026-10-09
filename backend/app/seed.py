@@ -242,6 +242,26 @@ def _seed_console_resources(db: Session, owner_id: int) -> None:
         {"name": "production-dns", "description": "DNS settings shared by production VPCs", "vpc_ids": [prod], "zone_ids": [internal.zone_id],
          "resource_ids": [rule.public_id, qlog.public_id, group.public_id]},
     )  # fmt: skip
+    resource_service.create(
+        db, owner_id, kind("global_resolver"),
+        {"name": "corp-global-resolver", "description": "Anycast resolver for branch offices", "observability_region": "us-east-1",
+         "regions": ["us-east-1", "eu-west-1", "ap-south-1"], "ip_address_type": "DUALSTACK"},
+        public_id=ids("gr-0a1b2c3d4e5f6a7b8"),
+    )  # fmt: skip
+    resource_service.create(
+        db, owner_id, kind("resolver_outpost"),
+        {"name": "factory-outpost-resolver", "outpost_arn": "arn:aws:outposts:us-east-1:123456789012:outpost/op-0a1b2c3d4e5f60789", "instance_count": 4, "preferred_instance_type": "m5.large"},
+        public_id=ids("rslvr-op-0a1b2c3d4e5f6a7b8"),
+    )  # fmt: skip
+    # Shared DNS views come from another account through AWS RAM, so they are inserted directly rather than "created".
+    db.add(
+        Resource(
+            owner_id=owner_id, kind="shared_dns_view", public_id=ids("dnsview-0a1b2c3d4e5f6a7b8"), name="partner-shared-view", status="ACTIVE",
+            data={"name": "partner-shared-view", "description": "Split-horizon view shared by the networking account", "owner_account_id": "111122223333",
+                  "dnssec_validation": True, "edns_client_subnet": False, "firewall_fail_open": False},
+        )
+    )  # fmt: skip
+    db.commit()
 
 
 _COPY_ORDER = (HealthCheck, HostedZone, VpcAssociation, DnsRecord, Resource)

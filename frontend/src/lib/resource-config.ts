@@ -106,6 +106,10 @@ export interface ResourceConfig {
   rowHref?: (item: ResourceItem) => string | null;
   /** Lets one config use a bespoke create page route (e.g. domain registration). */
   createHref?: string;
+  /** Content shown above the table (getting-started panels, banners). The table then becomes a container with an h2 header. */
+  intro?: ReactNode;
+  /** Extra header buttons, placed before the Create button. */
+  headerActions?: (ctx: { selected: ResourceItem | undefined; refresh: () => void }) => ReactNode;
 }
 
 export const idOf = (config: ResourceConfig, item: ResourceItem): string => String(item[config.idField ?? "id"]);

@@ -11,7 +11,7 @@ async function shot(page: Page, name: string) {
 }
 
 async function chooseOption(page: Page, label: string | RegExp, option: RegExp | string) {
-  await page.getByRole("button", { name: label }).first().click();
+  await page.getByRole("main").getByRole("button", { name: label }).first().click();
   await page.getByRole("option", { name: option }).first().click();
 }
 

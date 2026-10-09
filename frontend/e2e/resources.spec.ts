@@ -204,7 +204,7 @@ test("domains: search, register, edit, renew, request history", async ({ page })
 });
 
 async function choose(page: Page, select: string | RegExp, option: string | RegExp) {
-  await page.getByRole("button", { name: select }).first().click();
+  await page.getByRole("main").getByRole("button", { name: select }).first().click();
   await page.getByRole("option", { name: option }).first().click();
 }
 
@@ -283,14 +283,17 @@ test("DNS Firewall: domain list, rule group and the simulator blocking a query",
 test("top bar: services menu, notifications, activity and help panel", async ({ page }) => {
   await login(page);
   await page.getByRole("button", { name: "Services" }).click();
+  await expect(page.getByRole("menuitem", { name: /^Route 53/ }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Storage" }).click();
   await page.getByRole("menuitem", { name: /^S3/ }).click();
   await expect(page.getByRole("dialog")).toContainText("S3 is not available");
   await page.getByRole("dialog").getByRole("button", { name: "Close dialog" }).click();
 
-  await page.getByRole("button", { name: /Notifications/ }).click();
-  await expect(page.getByRole("menuitem", { name: /(Created|Updated|Deleted|Imported) / }).first()).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Mark all as read" })).toBeVisible();
-  await page.getByRole("menuitem", { name: "View all activity" }).click();
+  await page.getByRole("button", { name: /^Notifications/ }).click();
+  await expect(page.getByRole("tab", { name: "AWS managed" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: /(Created|Updated|Deleted|Imported) / }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mark all as read" })).toBeVisible();
+  await page.getByRole("button", { name: "Notification center" }).click();
   await expect(page.getByRole("heading", { level: 1, name: /^Activity/ })).toBeVisible();
   await page.getByPlaceholder(/Filter activity/).fill("baseline-firewall");
   await expect(page.getByRole("link", { name: "baseline-firewall" })).toBeVisible();
@@ -304,10 +307,71 @@ test("top bar: services menu, notifications, activity and help panel", async ({ 
   await expect(page.getByRole("link", { name: "activity-check.com" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Help", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Route 53 help panel" }).click();
   await expect(page.getByRole("heading", { name: "Route 53 help" })).toBeVisible();
   await page.goto("/hosted-zones/Z04512872OH7L5Q4YLRPT");
   await page.getByRole("button", { name: "Info" }).first().click();
   await expect(page.getByRole("heading", { name: "Hosted zones" }).first()).toBeVisible();
+});
+
+test("console chrome: search, settings, CloudShell and feedback", async ({ page }) => {
+  await login(page);
+  await page.keyboard.press("Alt+s");
+  await page.keyboard.type("traffic pol");
+  await page.getByRole("option", { name: /^Traffic policies/ }).click();
+  await expect(page.getByRole("heading", { level: 1, name: /^Traffic policies/ })).toBeVisible();
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("radio", { name: "Dark" }).check();
+  await expect(page.locator("body")).toHaveClass(/awsui-dark-mode/);
+  await page.getByRole("radio", { name: "Light" }).check();
+  await expect(page.locator("body")).not.toHaveClass(/awsui-dark-mode/);
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "CloudShell" }).first().click();
+  const shell = page.getByRole("textbox", { name: "CloudShell command" });
+  await shell.fill("aws route53 list-hosted-zones");
+  await shell.press("Enter");
+  await expect(page.getByRole("log")).toContainText('"Name": "example.com."');
+  await shell.fill("dig www.example.com");
+  await shell.press("Enter");
+  await expect(page.getByRole("log")).toContainText("status: NOERROR");
+  await shell.fill("aws route53 delete-hosted-zone --id Z04512872OH7L5Q4YLRPT");
+  await shell.press("Enter");
+  await expect(page.getByRole("log")).toContainText("read-only");
+  await page.getByRole("button", { name: "Close CloudShell" }).click();
+
+  await page.getByRole("button", { name: "Feedback" }).click();
+  await page.getByRole("textbox", { name: "Feedback" }).fill("The record editor is easy to use.");
+  await page.getByRole("button", { name: "Submit" }).click();
+  await expect(page.getByText("Thank you. Your feedback was sent.")).toBeVisible();
+});
+
+test("global resolvers, shared DNS views and Resolver on Outposts", async ({ page }) => {
+  await login(page);
+  await page.goto("/global-resolvers");
+  await expect(page.getByText("Getting started with global resolver")).toBeVisible();
+  await expect(page.getByRole("link", { name: "corp-global-resolver" })).toBeVisible();
+  await page.getByRole("button", { name: "Create global resolver" }).first().click();
+  await page.getByLabel("Resolver name").fill("e2e global");
+  await page.getByRole("button", { name: "Create global resolver" }).last().click();
+  await expect(page.getByRole("heading", { name: "e2e global" })).toBeVisible();
+  await expect(page.getByText(/globalresolver\.route53\.aws/)).toBeVisible();
+
+  await page.goto("/shared-dns-views");
+  await expect(page.getByRole("link", { name: "partner-shared-view" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Create/ })).toHaveCount(0);
+
+  await page.goto("/resolver-outposts");
+  await page.getByRole("button", { name: "Create Resolver" }).first().click();
+  await page.getByLabel("Name").fill("e2e-outpost");
+  await page.getByLabel("Outpost ARN").fill("not-an-arn");
+  await page.getByRole("button", { name: "Create Resolver" }).last().click();
+  await expect(page.getByText(/Enter an Outpost ARN/).first()).toBeVisible();
+  await page.getByLabel("Outpost ARN").fill("arn:aws:outposts:us-east-1:123456789012:outpost/op-0123456789abcdef0");
+  await page.getByRole("button", { name: "Create Resolver" }).last().click();
+  await expect(page.getByRole("heading", { name: "e2e-outpost" })).toBeVisible();
+  await expect(page.getByText("op-0123456789abcdef0").first()).toBeVisible();
 });
 
 test("billing estimate and Billing menu item", async ({ page }) => {

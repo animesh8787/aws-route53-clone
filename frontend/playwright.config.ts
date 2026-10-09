@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { defineConfig } from "@playwright/test";
@@ -5,6 +6,8 @@ import { defineConfig } from "@playwright/test";
 const FRONTEND_PORT = 3100;
 const BACKEND_PORT = 8100;
 const isWindows = process.platform === "win32";
+// Start every run from an empty database (workers also load this file, so only the main process clears it).
+if (process.env.TEST_WORKER_INDEX === undefined) fs.rmSync(path.resolve("..", "backend", "e2e.db"), { force: true });
 const python = path.resolve("..", "backend", ".venv", isWindows ? "Scripts" : "bin", isWindows ? "python.exe" : "python");
 
 /**

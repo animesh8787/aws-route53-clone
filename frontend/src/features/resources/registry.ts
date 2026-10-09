@@ -2,6 +2,7 @@ import { activityConfig } from "@/features/activity/config";
 import { cidrCollectionConfig } from "@/features/cidr-collections/config";
 import { domainConfig, domainRequestConfig } from "@/features/domains/config";
 import { domainListConfig, ruleGroupConfig } from "@/features/firewall/config";
+import { globalResolverConfig, outpostResolverConfig, sharedDnsViewConfig } from "@/features/global-resolver/config";
 import { healthCheckConfig } from "@/features/health-checks/config";
 import { profileConfig } from "@/features/profiles/config";
 import { inboundEndpointConfig, outboundEndpointConfig, queryLoggingConfig, resolverRuleConfig, resolverVpcConfig } from "@/features/resolver/config";
@@ -14,7 +15,7 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = Object.fromEntri
   [
     healthCheckConfig, profileConfig, cidrCollectionConfig, trafficPolicyConfig, policyRecordConfig, domainConfig, domainRequestConfig,
     resolverVpcConfig, inboundEndpointConfig, outboundEndpointConfig, resolverRuleConfig, queryLoggingConfig, domainListConfig, ruleGroupConfig,
-    activityConfig,
+    activityConfig, globalResolverConfig, sharedDnsViewConfig, outpostResolverConfig,
   ].map((c) => [c.route, c]),
 );
 

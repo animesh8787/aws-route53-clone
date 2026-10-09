@@ -16,6 +16,8 @@ body {
   line-height: 1.5;
 }
 
+/* Console chrome (top bar, menus, footer, CloudShell) lives in console-chrome.css. */
+
 /* Keep long DNS values (TXT, DKIM keys) from stretching table columns. */
 .record-value {
   display: block;
