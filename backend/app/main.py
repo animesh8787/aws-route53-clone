@@ -1,4 +1,5 @@
 """FastAPI application factory."""
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -41,19 +42,25 @@ def _friendly_loc(loc: tuple) -> str:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     started = time.monotonic()
-    try:
-        logger.info("Startup: creating tables")
-        Base.metadata.create_all(engine)
-        logger.info("Startup: tables ready (%.1fs)", time.monotonic() - started)
-        if get_settings().seed_on_start:
-            from app.seed import seed_all
+    attempts = 3  # a hosted database can drop the first connection while it wakes up
+    for attempt in range(1, attempts + 1):
+        try:
+            logger.info("Startup: creating tables")
+            Base.metadata.create_all(engine)
+            logger.info("Startup: tables ready (%.1fs)", time.monotonic() - started)
+            if get_settings().seed_on_start:
+                from app.seed import seed_all
 
-            with SessionLocal() as db:
-                seed_all(db)
-            logger.info("Startup: seed check finished (%.1fs)", time.monotonic() - started)
-    except Exception:
-        logger.exception("Startup failed after %.1fs", time.monotonic() - started)
-        raise
+                with SessionLocal() as db:
+                    seed_all(db)
+                logger.info("Startup: seed check finished (%.1fs)", time.monotonic() - started)
+            break
+        except Exception:
+            logger.exception("Startup attempt %d/%d failed after %.1fs", attempt, attempts, time.monotonic() - started)
+            if attempt == attempts:
+                raise
+            engine.dispose()
+            await asyncio.sleep(3)
     yield
 
 
